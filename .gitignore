@@ -1,0 +1,24 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+artifacts/
+[Dd]ebug/
+[Rr]elease/
+.vs/
+*.received.*
+
+# Environment & secrets — NEVER commit these
+.env
+.env.*
+!.env.example
+appsettings.Development.json
+appsettings.Local.json
+secrets.json
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+*.swp

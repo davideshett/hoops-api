@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Hoops.Api/Hoops.Api.csproj" />
+    <Project Path="src/Hoops.Infrastructure/Hoops.Infrastructure.csproj" />
+    <Project Path="src/Hoops.Modules.Competitions/Hoops.Modules.Competitions.csproj" />
+    <Project Path="src/Hoops.Modules.GameRecording/Hoops.Modules.GameRecording.csproj" />
+    <Project Path="src/Hoops.Modules.Identity/Hoops.Modules.Identity.csproj" />
+    <Project Path="src/Hoops.Modules.Registry/Hoops.Modules.Registry.csproj" />
+    <Project Path="src/Hoops.Modules.Statistics/Hoops.Modules.Statistics.csproj" />
+    <Project Path="src/Hoops.SharedKernel/Hoops.SharedKernel.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Hoops.ArchitectureTests/Hoops.ArchitectureTests.csproj" />
+    <Project Path="tests/Hoops.IntegrationTests/Hoops.IntegrationTests.csproj" />
+    <Project Path="tests/Hoops.UnitTests/Hoops.UnitTests.csproj" />
+  </Folder>
+</Solution>
