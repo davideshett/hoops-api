@@ -4,6 +4,12 @@
     <ProjectReference Include="..\Hoops.SharedKernel\Hoops.SharedKernel.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- DI abstractions only; a module wires its own services via ModuleExtensions.
+         This is not MVC and not Infrastructure, so the boundary rule holds. -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>

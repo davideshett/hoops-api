@@ -1,6 +1,33 @@
 @Hoops.Api_HostAddress = http://localhost:5290
 
-GET {{Hoops.Api_HostAddress}}/weatherforecast/
-Accept: application/json
+### Health (liveness)
+GET {{Hoops.Api_HostAddress}}/health
 
-###
+### Register
+# @name register
+POST {{Hoops.Api_HostAddress}}/api/v1/auth/register
+Content-Type: application/json
+
+{ "email": "owner@example.com", "password": "password123", "fullName": "Org Owner" }
+
+### Login
+# @name login
+POST {{Hoops.Api_HostAddress}}/api/v1/auth/login
+Content-Type: application/json
+
+{ "email": "owner@example.com", "password": "password123" }
+
+### Current user
+GET {{Hoops.Api_HostAddress}}/api/v1/auth/me
+Authorization: Bearer {{login.response.body.accessToken}}
+
+### Create organisation
+POST {{Hoops.Api_HostAddress}}/api/v1/organisations
+Authorization: Bearer {{login.response.body.accessToken}}
+Content-Type: application/json
+
+{ "name": "Anambra BBA", "slug": "anambra-bba", "countryCode": "NG", "defaultTimezone": "Africa/Lagos" }
+
+### List my organisations
+GET {{Hoops.Api_HostAddress}}/api/v1/organisations
+Authorization: Bearer {{login.response.body.accessToken}}
