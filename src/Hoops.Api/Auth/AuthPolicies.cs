@@ -15,6 +15,9 @@ public static class AuthPolicies
     /// <summary>An Owner or Admin of the route's organisation.</summary>
     public const string OrgAdmin = "OrgAdmin";
 
+    /// <summary>An Owner, Admin, or CompetitionManager of the route's organisation. Manages competition data.</summary>
+    public const string OrgManager = "OrgManager";
+
     /// <summary>Registers all platform authorization policies and the membership handler.</summary>
     public static IServiceCollection AddHoopsAuthorization(this IServiceCollection services)
     {
@@ -32,6 +35,12 @@ public static class AuthPolicies
                 policy.RequireAuthenticatedUser();
                 policy.AddRequirements(new OrganisationMembershipRequirement(
                     OrganisationRole.Owner, OrganisationRole.Admin));
+            })
+            .AddPolicy(OrgManager, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.AddRequirements(new OrganisationMembershipRequirement(
+                    OrganisationRole.Owner, OrganisationRole.Admin, OrganisationRole.CompetitionManager));
             });
 
         return services;

@@ -57,3 +57,115 @@ public readonly record struct RefreshTokenId(Guid Value) : IStronglyTypedId<Refr
     /// <inheritdoc />
     public override string ToString() => Value.ToString();
 }
+
+/// <summary>Identifies a <c>Season</c>.</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct SeasonId(Guid Value) : IStronglyTypedId<SeasonId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static SeasonId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static SeasonId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}
+
+/// <summary>Identifies a <c>Competition</c>.</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct CompetitionId(Guid Value) : IStronglyTypedId<CompetitionId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static CompetitionId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static CompetitionId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}
+
+/// <summary>Identifies a <c>Stage</c> within a competition.</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct StageId(Guid Value) : IStronglyTypedId<StageId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static StageId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static StageId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}
+
+/// <summary>Identifies a <c>Group</c> (pool) within a stage.</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct GroupId(Guid Value) : IStronglyTypedId<GroupId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static GroupId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static GroupId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}
+
+/// <summary>Identifies a canonical <c>Team</c> (club).</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct TeamId(Guid Value) : IStronglyTypedId<TeamId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static TeamId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static TeamId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}
+
+/// <summary>Identifies a <c>CompetitionTeam</c> — a team's entry into one competition.</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct CompetitionTeamId(Guid Value) : IStronglyTypedId<CompetitionTeamId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static CompetitionTeamId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static CompetitionTeamId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}
+
+/// <summary>Identifies a <c>Venue</c>.</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct VenueId(Guid Value) : IStronglyTypedId<VenueId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static VenueId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static VenueId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}
+
+/// <summary>Identifies a <c>TeamStaff</c> member.</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct TeamStaffId(Guid Value) : IStronglyTypedId<TeamStaffId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static TeamStaffId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static TeamStaffId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}

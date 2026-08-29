@@ -1,3 +1,5 @@
+using Hoops.SharedKernel.Identifiers;
+
 namespace Hoops.SharedKernel.Abstractions;
 
 /// <summary>
@@ -9,6 +11,9 @@ namespace Hoops.SharedKernel.Abstractions;
 /// </summary>
 public interface ITenantScoped
 {
-    /// <summary>The owning organisation. Never null, never mutated after creation.</summary>
-    Guid OrganisationId { get; }
+    /// <summary>
+    /// The owning organisation. Never mutated after creation. Typed (rather than the doc's
+    /// illustrative <c>Guid</c>) so tenancy comparisons stay type-safe end to end.
+    /// </summary>
+    OrganisationId OrganisationId { get; }
 }

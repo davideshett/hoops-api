@@ -2,6 +2,7 @@ using Hoops.Infrastructure.Persistence;
 using Hoops.Infrastructure.Persistence.Repositories;
 using Hoops.Infrastructure.Security;
 using Hoops.Infrastructure.Time;
+using Hoops.Modules.Competitions.Application.Abstractions;
 using Hoops.Modules.Identity.Application.Abstractions;
 using Hoops.SharedKernel.Abstractions;
 using Microsoft.EntityFrameworkCore;
@@ -30,11 +31,23 @@ public static class InfrastructureExtensions
             options.UseSnakeCaseNamingConvention();
         });
 
+        // Identity module persistence.
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IOrganisationRepository, OrganisationRepository>();
         services.AddScoped<IMembershipRepository, MembershipRepository>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+
+        // Competitions module persistence.
+        services.AddScoped<ICompetitionsUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
+        services.AddScoped<ISeasonRepository, SeasonRepository>();
+        services.AddScoped<ICompetitionRepository, CompetitionRepository>();
+        services.AddScoped<IStageRepository, StageRepository>();
+        services.AddScoped<IGroupRepository, GroupRepository>();
+        services.AddScoped<ITeamRepository, TeamRepository>();
+        services.AddScoped<ICompetitionTeamRepository, CompetitionTeamRepository>();
+        services.AddScoped<ITeamStaffRepository, TeamStaffRepository>();
+        services.AddScoped<IVenueRepository, VenueRepository>();
 
         services.AddSingleton<IPasswordHasher, AspNetPasswordHasher>();
         services.AddSingleton<IClock, SystemClock>();

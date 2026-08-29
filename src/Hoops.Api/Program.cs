@@ -8,6 +8,7 @@ using Hoops.Api.Health;
 using Hoops.Api.Http;
 using Hoops.Infrastructure;
 using Hoops.Infrastructure.Persistence;
+using Hoops.Modules.Competitions;
 using Hoops.Modules.Identity;
 using Hoops.Modules.Identity.Application.Abstractions;
 using Hoops.SharedKernel.Abstractions;
@@ -67,6 +68,7 @@ builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 // ── Application + infrastructure ───────────────────────────────────────────
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddIdentityModule();
+builder.Services.AddCompetitionsModule();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();

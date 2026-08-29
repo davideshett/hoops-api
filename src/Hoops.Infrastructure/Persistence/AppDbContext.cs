@@ -1,8 +1,11 @@
 using System.Reflection;
+using Hoops.Modules.Competitions.Domain;
 using Hoops.Modules.Identity.Application.Abstractions;
 using Hoops.Modules.Identity.Domain;
 using Hoops.SharedKernel.Abstractions;
+using Hoops.SharedKernel.Identifiers;
 using Microsoft.EntityFrameworkCore;
+using CompetitionsUnitOfWork = Hoops.Modules.Competitions.Application.Abstractions.ICompetitionsUnitOfWork;
 
 namespace Hoops.Infrastructure.Persistence;
 
@@ -12,7 +15,7 @@ namespace Hoops.Infrastructure.Persistence;
 /// query filter on every <see cref="ITenantScoped"/> entity so a forgotten <c>.Where()</c> can never
 /// leak across tenants. Also serves as the Identity module's unit of work.
 /// </summary>
-public sealed class AppDbContext : DbContext, IUnitOfWork
+public sealed class AppDbContext : DbContext, IUnitOfWork, CompetitionsUnitOfWork
 {
     private static readonly MethodInfo SetTenantFilterMethod =
         typeof(AppDbContext).GetMethod(nameof(SetTenantFilter), BindingFlags.Instance | BindingFlags.NonPublic)!;
@@ -40,11 +43,35 @@ public sealed class AppDbContext : DbContext, IUnitOfWork
     /// <summary>Refresh tokens.</summary>
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
+    /// <summary>Seasons.</summary>
+    public DbSet<Season> Seasons => Set<Season>();
+
+    /// <summary>Competitions.</summary>
+    public DbSet<Competition> Competitions => Set<Competition>();
+
+    /// <summary>Stages.</summary>
+    public DbSet<Stage> Stages => Set<Stage>();
+
+    /// <summary>Groups (pools).</summary>
+    public DbSet<Group> Groups => Set<Group>();
+
+    /// <summary>Canonical teams.</summary>
+    public DbSet<Team> Teams => Set<Team>();
+
+    /// <summary>Competition entries.</summary>
+    public DbSet<CompetitionTeam> CompetitionTeams => Set<CompetitionTeam>();
+
+    /// <summary>Team staff.</summary>
+    public DbSet<TeamStaff> TeamStaff => Set<TeamStaff>();
+
+    /// <summary>Venues.</summary>
+    public DbSet<Venue> Venues => Set<Venue>();
+
     /// <summary>
     /// The organisation in scope for the current request, used by tenant query filters. Falls back to
-    /// <see cref="Guid.Empty"/> on non-tenant-scoped requests, which matches no row.
+    /// an empty id on non-tenant-scoped requests, which matches no row.
     /// </summary>
-    public Guid CurrentOrganisationId => _tenant.OrganisationId ?? Guid.Empty;
+    public OrganisationId CurrentOrganisationId => OrganisationId.FromGuid(_tenant.OrganisationId ?? Guid.Empty);
 
     /// <summary>
     /// Entities that are deliberately NOT tenant-scoped and therefore carry no query filter. This is
