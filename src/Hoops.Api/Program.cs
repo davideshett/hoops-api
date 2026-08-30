@@ -6,10 +6,12 @@ using FluentValidation.AspNetCore;
 using Hoops.Api.Auth;
 using Hoops.Api.Health;
 using Hoops.Api.Http;
+using Hoops.Api.Logging;
 using Hoops.Infrastructure;
 using Hoops.Infrastructure.Persistence;
 using Hoops.Modules.Competitions;
 using Hoops.Modules.Identity;
+using Hoops.Modules.Registry;
 using Hoops.Modules.Identity.Application.Abstractions;
 using Hoops.SharedKernel.Abstractions;
 using Hoops.SharedKernel.Identifiers;
@@ -25,8 +27,26 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// The NIN pepper (ADR-008) must come from a secret in real environments. For local development only,
+// supply a stable in-memory default so `dotnet run` works without ever committing a pepper to a file.
+if (builder.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(builder.Configuration["Registry:NinPepper"]))
+{
+    builder.Configuration["Registry:NinPepper"] = "dev-only-insecure-nin-pepper-change-me";
+}
+
 builder.Host.UseSerilog((context, loggerConfiguration) =>
-    loggerConfiguration.ReadFrom.Configuration(context.Configuration).WriteTo.Console());
+{
+    loggerConfiguration
+        .ReadFrom.Configuration(context.Configuration)
+        .Enrich.With(new SensitiveDataEnricher()) // redacts nin/ninHmac/guardianPhone/photoObjectKey
+        .WriteTo.Console();
+
+    // Test hosts set CaptureLogs=true to assert a plaintext NIN never reaches any log line.
+    if (context.Configuration.GetValue<bool>("CaptureLogs"))
+    {
+        loggerConfiguration.WriteTo.Sink(new CapturingSink());
+    }
+});
 
 // ── Options ────────────────────────────────────────────────────────────────
 builder.Services.AddOptions<JwtOptions>()
@@ -69,6 +89,7 @@ builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddIdentityModule();
 builder.Services.AddCompetitionsModule();
+builder.Services.AddRegistryModule();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();

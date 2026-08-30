@@ -4,6 +4,7 @@ using Hoops.Infrastructure.Security;
 using Hoops.Infrastructure.Time;
 using Hoops.Modules.Competitions.Application.Abstractions;
 using Hoops.Modules.Identity.Application.Abstractions;
+using Hoops.Modules.Registry.Application.Abstractions;
 using Hoops.SharedKernel.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -48,6 +49,23 @@ public static class InfrastructureExtensions
         services.AddScoped<ICompetitionTeamRepository, CompetitionTeamRepository>();
         services.AddScoped<ITeamStaffRepository, TeamStaffRepository>();
         services.AddScoped<IVenueRepository, VenueRepository>();
+
+        // Registry security (ADR-008): NIN pepper from config, delegated verification + photo storage stubs.
+        services.Configure<RegistryOptions>(configuration.GetSection(RegistryOptions.SectionName));
+        services.AddSingleton<INinHasher, HmacNinHasher>();
+        services.AddSingleton<INinVerificationProvider, StubNinVerificationProvider>();
+        services.AddSingleton<IPhotoStorage, StubPhotoStorage>();
+
+        // Registry module persistence.
+        services.AddScoped<IRegistryUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
+        services.AddScoped<IPlayerRepository, PlayerRepository>();
+        services.AddScoped<IPlayerOrgLinkRepository, PlayerOrgLinkRepository>();
+        services.AddScoped<IConsentRepository, ConsentRepository>();
+        services.AddScoped<IEligibilityFlagRepository, EligibilityFlagRepository>();
+        services.AddScoped<IRegistryAuditRepository, RegistryAuditRepository>();
+        services.AddScoped<IRegistryLedgerRepository, RegistryLedgerRepository>();
+        services.AddScoped<IMergeProposalRepository, MergeProposalRepository>();
+        services.AddScoped<IRosterRepository, RosterRepository>();
 
         services.AddSingleton<IPasswordHasher, AspNetPasswordHasher>();
         services.AddSingleton<IClock, SystemClock>();

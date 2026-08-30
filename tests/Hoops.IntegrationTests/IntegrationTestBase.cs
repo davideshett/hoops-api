@@ -1,6 +1,10 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Hoops.Infrastructure.Persistence;
+using Hoops.Modules.Identity.Domain;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Hoops.IntegrationTests;
 
@@ -66,6 +70,34 @@ public abstract class IntegrationTestBase
         var orgId = Guid.Parse(doc.RootElement.GetProperty("id").GetString()!);
         var freshToken = doc.RootElement.GetProperty("accessToken").GetString()!;
         return (freshToken, orgId);
+    }
+
+    /// <summary>Flips a user to platform admin directly in the database (there is no endpoint for it).</summary>
+    protected async Task PromoteToSystemAdminAsync(string email)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await db.Users.FirstAsync(u => u.Email == email);
+        db.Entry(user).Property(u => u.IsSystemAdmin).CurrentValue = true;
+        await db.SaveChangesAsync();
+    }
+
+    /// <summary>Runs an action against the application database (for setup or tampering).</summary>
+    protected async Task WithDbAsync(Func<AppDbContext, Task> action)
+    {
+        using var scope = Factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await action(db);
+    }
+
+    /// <summary>Registers a user, promotes them to platform admin, and returns a token with the admin claim.</summary>
+    protected async Task<string> NewPlatformAdminTokenAsync()
+    {
+        var client = NewClient();
+        var email = UniqueEmail();
+        await RegisterAsync(client, email);
+        await PromoteToSystemAdminAsync(email);
+        return await LoginAsync(client, email);
     }
 
     private static async Task<string> ReadAccessTokenAsync(HttpResponseMessage response)

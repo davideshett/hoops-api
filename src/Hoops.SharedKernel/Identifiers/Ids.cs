@@ -169,3 +169,102 @@ public readonly record struct TeamStaffId(Guid Value) : IStronglyTypedId<TeamSta
     /// <inheritdoc />
     public override string ToString() => Value.ToString();
 }
+
+/// <summary>Identifies a <c>Player</c> — the canonical, platform-level record of a human being (ADR-003).
+/// This is the only key that ever identifies a player: permanent, public, never derived from the NIN.</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct PlayerId(Guid Value) : IStronglyTypedId<PlayerId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static PlayerId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static PlayerId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}
+
+/// <summary>Identifies a <c>PlayerOrgLink</c> — an organisation's engagement with a player.</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct PlayerOrgLinkId(Guid Value) : IStronglyTypedId<PlayerOrgLinkId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static PlayerOrgLinkId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static PlayerOrgLinkId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}
+
+/// <summary>Identifies a <c>ConsentRecord</c>.</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct ConsentRecordId(Guid Value) : IStronglyTypedId<ConsentRecordId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static ConsentRecordId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static ConsentRecordId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}
+
+/// <summary>Identifies a <c>PlayerEligibilityFlag</c>.</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct EligibilityFlagId(Guid Value) : IStronglyTypedId<EligibilityFlagId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static EligibilityFlagId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static EligibilityFlagId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}
+
+/// <summary>Identifies a <c>RegistryAudit</c> row.</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct RegistryAuditId(Guid Value) : IStronglyTypedId<RegistryAuditId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static RegistryAuditId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static RegistryAuditId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}
+
+/// <summary>Identifies a <c>MergeProposal</c>.</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct MergeProposalId(Guid Value) : IStronglyTypedId<MergeProposalId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static MergeProposalId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static MergeProposalId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}
+
+/// <summary>Identifies a <c>RosterEntry</c> — a player's participation in one competition team's squad.</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct RosterEntryId(Guid Value) : IStronglyTypedId<RosterEntryId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static RosterEntryId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static RosterEntryId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}

@@ -36,6 +36,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
             {
                 ["ConnectionStrings:Postgres"] = _postgres.GetConnectionString(),
                 ["Jwt:SigningKey"] = "integration-test-signing-key-at-least-32-bytes-long-000",
+                ["Registry:NinPepper"] = "integration-test-nin-pepper",
+                ["CaptureLogs"] = "true", // enable the in-memory sink for the no-NIN-in-logs assertion
             }));
     }
 }

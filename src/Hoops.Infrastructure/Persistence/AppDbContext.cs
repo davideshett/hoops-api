@@ -2,10 +2,12 @@ using System.Reflection;
 using Hoops.Modules.Competitions.Domain;
 using Hoops.Modules.Identity.Application.Abstractions;
 using Hoops.Modules.Identity.Domain;
+using Hoops.Modules.Registry.Domain;
 using Hoops.SharedKernel.Abstractions;
 using Hoops.SharedKernel.Identifiers;
 using Microsoft.EntityFrameworkCore;
 using CompetitionsUnitOfWork = Hoops.Modules.Competitions.Application.Abstractions.ICompetitionsUnitOfWork;
+using RegistryUnitOfWork = Hoops.Modules.Registry.Application.Abstractions.IRegistryUnitOfWork;
 
 namespace Hoops.Infrastructure.Persistence;
 
@@ -15,7 +17,7 @@ namespace Hoops.Infrastructure.Persistence;
 /// query filter on every <see cref="ITenantScoped"/> entity so a forgotten <c>.Where()</c> can never
 /// leak across tenants. Also serves as the Identity module's unit of work.
 /// </summary>
-public sealed class AppDbContext : DbContext, IUnitOfWork, CompetitionsUnitOfWork
+public sealed class AppDbContext : DbContext, IUnitOfWork, CompetitionsUnitOfWork, RegistryUnitOfWork
 {
     private static readonly MethodInfo SetTenantFilterMethod =
         typeof(AppDbContext).GetMethod(nameof(SetTenantFilter), BindingFlags.Instance | BindingFlags.NonPublic)!;
@@ -67,6 +69,30 @@ public sealed class AppDbContext : DbContext, IUnitOfWork, CompetitionsUnitOfWor
     /// <summary>Venues.</summary>
     public DbSet<Venue> Venues => Set<Venue>();
 
+    /// <summary>Players — platform-level registry (ADR-003).</summary>
+    public DbSet<Player> Players => Set<Player>();
+
+    /// <summary>Player-organisation provenance links.</summary>
+    public DbSet<PlayerOrgLink> PlayerOrgLinks => Set<PlayerOrgLink>();
+
+    /// <summary>Consent records.</summary>
+    public DbSet<ConsentRecord> ConsentRecords => Set<ConsentRecord>();
+
+    /// <summary>Player eligibility flags.</summary>
+    public DbSet<PlayerEligibilityFlag> EligibilityFlags => Set<PlayerEligibilityFlag>();
+
+    /// <summary>Registry audit rows.</summary>
+    public DbSet<RegistryAudit> RegistryAudits => Set<RegistryAudit>();
+
+    /// <summary>The hash-chained provenance ledger.</summary>
+    public DbSet<RegistryLedgerEntry> RegistryLedger => Set<RegistryLedgerEntry>();
+
+    /// <summary>Merge proposals.</summary>
+    public DbSet<MergeProposal> MergeProposals => Set<MergeProposal>();
+
+    /// <summary>Roster entries — tenant-scoped, built from a registry playerId.</summary>
+    public DbSet<RosterEntry> RosterEntries => Set<RosterEntry>();
+
     /// <summary>
     /// The organisation in scope for the current request, used by tenant query filters. Falls back to
     /// an empty id on non-tenant-scoped requests, which matches no row.
@@ -82,10 +108,20 @@ public sealed class AppDbContext : DbContext, IUnitOfWork, CompetitionsUnitOfWor
     /// </summary>
     public static readonly IReadOnlySet<Type> UnscopedEntityWhitelist = new HashSet<Type>
     {
+        // ── Identity / platform infrastructure ──────────────────────────────
         typeof(User),                   // platform-level login; belongs to many orgs
         typeof(Organisation),           // the tenant root itself; has an id, not an organisation_id
         typeof(OrganisationMembership), // must be queryable across orgs (login org list)
         typeof(RefreshToken),           // user-scoped, not org-scoped
+
+        // ── Registry (ADR-003): the national record crosses tenants by design ─
+        typeof(Player),                 // the canonical human record, shared by every org
+        typeof(PlayerOrgLink),          // read across orgs for provenance
+        typeof(ConsentRecord),          // attaches to a player, not an org
+        typeof(PlayerEligibilityFlag),  // a platform-scope flag binds every league
+        typeof(RegistryAudit),          // registry-wide audit trail
+        typeof(RegistryLedgerEntry),    // registry-wide tamper-evident ledger
+        typeof(MergeProposal),          // platform-admin queue across all orgs
     };
 
     /// <inheritdoc />
