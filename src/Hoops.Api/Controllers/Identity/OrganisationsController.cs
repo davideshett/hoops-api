@@ -34,20 +34,24 @@ public sealed class OrganisationsController : ApiControllerBase
     public async Task<ActionResult<IReadOnlyList<OrganisationMembershipSummary>>> List(CancellationToken ct)
         => Ok(await _organisations.ListForUserAsync(CurrentUserId, ct));
 
-    /// <summary>Creates an organisation, making the caller its Owner.</summary>
+    /// <summary>
+    /// Creates an organisation, making the caller its Owner. The response carries a fresh access token
+    /// that already includes the new membership — swap it in and call the org's endpoints immediately,
+    /// no re-login required.
+    /// </summary>
     /// <param name="request">The organisation to create.</param>
     /// <param name="ct">Cancellation token.</param>
-    /// <response code="201">The organisation was created.</response>
+    /// <response code="201">The organisation was created; the body includes a fresh access token.</response>
     /// <response code="400">The request payload was invalid.</response>
     /// <response code="401">The caller is not authenticated.</response>
     /// <response code="409">The slug is already taken.</response>
     [Authorize(Policy = AuthPolicies.Authenticated)]
     [HttpPost]
-    [ProducesResponseType(typeof(OrganisationDto), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(CreateOrganisationResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
-    public async Task<ActionResult<OrganisationDto>> Create(
+    public async Task<ActionResult<CreateOrganisationResponse>> Create(
         [FromBody] CreateOrganisationRequest request, CancellationToken ct)
     {
         var result = await _organisations.CreateAsync(CurrentUserId, request, ct);

@@ -48,6 +48,29 @@ public sealed class AuthorizationTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Create_org_returns_a_token_that_authorizes_immediately_without_relogin()
+    {
+        var client = NewClient();
+        var token = await RegisterAsync(client, UniqueEmail()); // this token carries no memberships
+
+        var created = await AuthenticatedClient(token).PostAsJsonAsync("/api/v1/organisations",
+            new { name = "Immediate", slug = UniqueSlug(), countryCode = "NG", defaultTimezone = "Africa/Lagos" });
+        created.StatusCode.Should().Be(HttpStatusCode.Created);
+        using var doc = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
+        var orgId = doc.RootElement.GetProperty("id").GetString();
+        var freshToken = doc.RootElement.GetProperty("accessToken").GetString();
+        freshToken.Should().NotBeNullOrEmpty();
+
+        // The token used to create the org still predates the membership -> 403.
+        var withOld = await AuthenticatedClient(token).GetAsync($"/api/v1/organisations/{orgId}");
+        withOld.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+
+        // The fresh token returned by create authorizes the org's endpoints straight away -> 200.
+        var withNew = await AuthenticatedClient(freshToken!).GetAsync($"/api/v1/organisations/{orgId}");
+        withNew.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
     public async Task Owner_can_read_their_own_org_after_reauthenticating()
     {
         var email = UniqueEmail();

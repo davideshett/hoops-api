@@ -49,25 +49,23 @@ public abstract class IntegrationTestBase
     }
 
     /// <summary>
-    /// Registers a fresh user, creates an organisation they own, and returns a token that already
-    /// carries the Owner membership claim (so org-scoped endpoints authorize). Owner satisfies every
-    /// competition-management policy.
+    /// Registers a fresh user and creates an organisation they own, returning the id and the fresh
+    /// access token the create-org call hands back — which already carries the Owner membership, so no
+    /// re-login is needed. Owner satisfies every competition-management policy.
     /// </summary>
     protected async Task<(string Token, Guid OrgId)> NewOrgWithOwnerAsync()
     {
         var client = NewClient();
-        var email = UniqueEmail();
-        var token = await RegisterAsync(client, email);
+        var token = await RegisterAsync(client, UniqueEmail());
 
         var created = await AuthenticatedClient(token).PostAsJsonAsync("/api/v1/organisations",
             new { name = "Org", slug = UniqueSlug(), countryCode = "NG", defaultTimezone = "Africa/Lagos" });
         created.EnsureSuccessStatusCode();
+
         using var doc = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
         var orgId = Guid.Parse(doc.RootElement.GetProperty("id").GetString()!);
-
-        // Re-login so the new Owner membership is reflected in the token's claims.
-        var refreshed = await LoginAsync(client, email);
-        return (refreshed, orgId);
+        var freshToken = doc.RootElement.GetProperty("accessToken").GetString()!;
+        return (freshToken, orgId);
     }
 
     private static async Task<string> ReadAccessTokenAsync(HttpResponseMessage response)

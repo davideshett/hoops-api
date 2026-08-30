@@ -31,6 +31,30 @@ public sealed record MemberDto(UserId UserId, string Email, string FullName, str
 /// <param name="DefaultTimezone">Optional IANA timezone; defaults to UTC.</param>
 public sealed record CreateOrganisationRequest(string Name, string Slug, string? CountryCode, string? DefaultTimezone);
 
+/// <summary>
+/// The result of creating an organisation: the new organisation, plus a freshly-minted access token
+/// that already carries the caller's new Owner membership — so org-scoped endpoints authorize
+/// immediately, with no second login. Keep the existing refresh token; its next use also reflects the
+/// new membership.
+/// </summary>
+/// <param name="Id">The organisation id.</param>
+/// <param name="Name">Display name.</param>
+/// <param name="Slug">URL handle.</param>
+/// <param name="CountryCode">ISO 3166-1 alpha-2 country code, if set.</param>
+/// <param name="DefaultTimezone">IANA default timezone.</param>
+/// <param name="CreatedAt">Creation timestamp, UTC.</param>
+/// <param name="AccessToken">A new bearer token carrying the Owner membership. Replace your current token with this.</param>
+/// <param name="AccessTokenExpiresAt">When the new access token expires, in UTC.</param>
+public sealed record CreateOrganisationResponse(
+    OrganisationId Id,
+    string Name,
+    string Slug,
+    string? CountryCode,
+    string DefaultTimezone,
+    DateTimeOffset CreatedAt,
+    string AccessToken,
+    DateTimeOffset AccessTokenExpiresAt);
+
 /// <summary>Payload to update an organisation's mutable profile fields. Omitted fields are unchanged.</summary>
 /// <param name="Name">New display name.</param>
 /// <param name="CountryCode">New country code.</param>

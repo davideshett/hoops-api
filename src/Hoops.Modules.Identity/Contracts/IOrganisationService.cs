@@ -14,8 +14,11 @@ public interface IOrganisationService
     Task<Result<IReadOnlyList<OrganisationMembershipSummary>>> ListForUserAsync(
         UserId userId, CancellationToken ct = default);
 
-    /// <summary>Creates an organisation, making <paramref name="creatorUserId"/> its Owner.</summary>
-    Task<Result<OrganisationDto>> CreateAsync(
+    /// <summary>
+    /// Creates an organisation, making <paramref name="creatorUserId"/> its Owner, and returns a fresh
+    /// access token carrying that membership so no re-login is needed.
+    /// </summary>
+    Task<Result<CreateOrganisationResponse>> CreateAsync(
         UserId creatorUserId, CreateOrganisationRequest request, CancellationToken ct = default);
 
     /// <summary>Fetches one organisation.</summary>

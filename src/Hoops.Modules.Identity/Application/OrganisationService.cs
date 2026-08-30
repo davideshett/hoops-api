@@ -13,6 +13,7 @@ public sealed class OrganisationService : IOrganisationService
     private readonly IOrganisationRepository _organisations;
     private readonly IMembershipRepository _memberships;
     private readonly IUserRepository _users;
+    private readonly IAccessTokenGenerator _accessTokens;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
 
@@ -21,12 +22,14 @@ public sealed class OrganisationService : IOrganisationService
         IOrganisationRepository organisations,
         IMembershipRepository memberships,
         IUserRepository users,
+        IAccessTokenGenerator accessTokens,
         IUnitOfWork unitOfWork,
         IClock clock)
     {
         _organisations = organisations;
         _memberships = memberships;
         _users = users;
+        _accessTokens = accessTokens;
         _unitOfWork = unitOfWork;
         _clock = clock;
     }
@@ -44,13 +47,19 @@ public sealed class OrganisationService : IOrganisationService
     }
 
     /// <inheritdoc />
-    public async Task<Result<OrganisationDto>> CreateAsync(
+    public async Task<Result<CreateOrganisationResponse>> CreateAsync(
         UserId creatorUserId, CreateOrganisationRequest request, CancellationToken ct = default)
     {
         var slug = request.Slug.Trim().ToLowerInvariant();
         if (await _organisations.ExistsBySlugAsync(slug, ct))
         {
             return Error.Conflict("SLUG_ALREADY_TAKEN", "An organisation with this slug already exists.");
+        }
+
+        var user = await _users.GetByIdAsync(creatorUserId, ct);
+        if (user is null)
+        {
+            return Error.NotFound("USER_NOT_FOUND", "The user no longer exists.");
         }
 
         var organisation = Organisation.Create(request.Name, slug, request.CountryCode, request.DefaultTimezone);
@@ -61,7 +70,16 @@ public sealed class OrganisationService : IOrganisationService
         _memberships.Add(membership);
 
         await _unitOfWork.SaveChangesAsync(ct);
-        return ToDto(organisation);
+
+        // Mint a fresh access token that includes the new Owner membership, so the caller can use the
+        // org's endpoints immediately without a second login.
+        var memberships = await _memberships.ListForUserAsync(creatorUserId, ct);
+        var claims = memberships.Select(m => new MembershipClaim(m.Membership.OrganisationId, m.Membership.Role)).ToList();
+        var token = _accessTokens.Generate(user.Id, user.Email, user.IsSystemAdmin, claims);
+
+        return new CreateOrganisationResponse(
+            organisation.Id, organisation.Name, organisation.Slug, organisation.CountryCode,
+            organisation.DefaultTimezone, organisation.CreatedAt, token.Value, token.ExpiresAt);
     }
 
     /// <inheritdoc />
