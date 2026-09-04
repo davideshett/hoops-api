@@ -3,6 +3,7 @@ using Hoops.Infrastructure.Persistence.Repositories;
 using Hoops.Infrastructure.Security;
 using Hoops.Infrastructure.Time;
 using Hoops.Modules.Competitions.Application.Abstractions;
+using Hoops.Modules.GameRecording.Application.Abstractions;
 using Hoops.Modules.Identity.Application.Abstractions;
 using Hoops.Modules.Registry.Application.Abstractions;
 using Hoops.SharedKernel.Abstractions;
@@ -66,6 +67,14 @@ public static class InfrastructureExtensions
         services.AddScoped<IRegistryLedgerRepository, RegistryLedgerRepository>();
         services.AddScoped<IMergeProposalRepository, MergeProposalRepository>();
         services.AddScoped<IRosterRepository, RosterRepository>();
+
+        // GameRecording module persistence.
+        services.AddScoped<IGameRecordingUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
+        services.AddScoped<IGameRepository, GameRepository>();
+        services.AddScoped<IGameRosterRepository, GameRosterRepository>();
+        services.AddScoped<IGameOfficialRepository, GameOfficialRepository>();
+        services.AddScoped<IRosterSnapshotSource, RosterSnapshotSource>();
+        services.AddScoped<IGameCompetitionSource, GameCompetitionSource>();
 
         services.AddSingleton<IPasswordHasher, AspNetPasswordHasher>();
         services.AddSingleton<IClock, SystemClock>();

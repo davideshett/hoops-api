@@ -1,5 +1,6 @@
 using System.Reflection;
 using Hoops.Modules.Competitions.Domain;
+using Hoops.Modules.GameRecording.Domain;
 using Hoops.Modules.Identity.Application.Abstractions;
 using Hoops.Modules.Identity.Domain;
 using Hoops.Modules.Registry.Domain;
@@ -7,6 +8,7 @@ using Hoops.SharedKernel.Abstractions;
 using Hoops.SharedKernel.Identifiers;
 using Microsoft.EntityFrameworkCore;
 using CompetitionsUnitOfWork = Hoops.Modules.Competitions.Application.Abstractions.ICompetitionsUnitOfWork;
+using GameRecordingUnitOfWork = Hoops.Modules.GameRecording.Application.Abstractions.IGameRecordingUnitOfWork;
 using RegistryUnitOfWork = Hoops.Modules.Registry.Application.Abstractions.IRegistryUnitOfWork;
 
 namespace Hoops.Infrastructure.Persistence;
@@ -17,7 +19,7 @@ namespace Hoops.Infrastructure.Persistence;
 /// query filter on every <see cref="ITenantScoped"/> entity so a forgotten <c>.Where()</c> can never
 /// leak across tenants. Also serves as the Identity module's unit of work.
 /// </summary>
-public sealed class AppDbContext : DbContext, IUnitOfWork, CompetitionsUnitOfWork, RegistryUnitOfWork
+public sealed class AppDbContext : DbContext, IUnitOfWork, CompetitionsUnitOfWork, RegistryUnitOfWork, GameRecordingUnitOfWork
 {
     private static readonly MethodInfo SetTenantFilterMethod =
         typeof(AppDbContext).GetMethod(nameof(SetTenantFilter), BindingFlags.Instance | BindingFlags.NonPublic)!;
@@ -92,6 +94,15 @@ public sealed class AppDbContext : DbContext, IUnitOfWork, CompetitionsUnitOfWor
 
     /// <summary>Roster entries — tenant-scoped, built from a registry playerId.</summary>
     public DbSet<RosterEntry> RosterEntries => Set<RosterEntry>();
+
+    /// <summary>Games (fixtures).</summary>
+    public DbSet<Game> Games => Set<Game>();
+
+    /// <summary>Frozen game-roster snapshots.</summary>
+    public DbSet<GameRosterEntry> GameRosterEntries => Set<GameRosterEntry>();
+
+    /// <summary>Game officials.</summary>
+    public DbSet<GameOfficial> GameOfficials => Set<GameOfficial>();
 
     /// <summary>
     /// The organisation in scope for the current request, used by tenant query filters. Falls back to

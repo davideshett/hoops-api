@@ -268,3 +268,45 @@ public readonly record struct RosterEntryId(Guid Value) : IStronglyTypedId<Roste
     /// <inheritdoc />
     public override string ToString() => Value.ToString();
 }
+
+/// <summary>Identifies a <c>Game</c> (fixture).</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct GameId(Guid Value) : IStronglyTypedId<GameId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static GameId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static GameId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}
+
+/// <summary>Identifies a <c>GameRosterEntry</c> — a frozen roster snapshot row for one game.</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct GameRosterEntryId(Guid Value) : IStronglyTypedId<GameRosterEntryId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static GameRosterEntryId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static GameRosterEntryId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}
+
+/// <summary>Identifies a <c>GameOfficial</c>.</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct GameOfficialId(Guid Value) : IStronglyTypedId<GameOfficialId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static GameOfficialId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static GameOfficialId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}
