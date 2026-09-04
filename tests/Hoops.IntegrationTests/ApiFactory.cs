@@ -15,6 +15,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:16")
         .Build();
 
+    /// <summary>The throwaway container's connection string — the only database tests may touch.</summary>
+    public string ContainerConnectionString => _postgres.GetConnectionString();
+
     /// <summary>Starts the container before any test in the collection runs.</summary>
     public async Task InitializeAsync() => await _postgres.StartAsync();
 
@@ -28,17 +31,18 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     /// <inheritdoc />
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        // Development so Swagger is served (an acceptance criterion), plus a valid signing key and the
-        // container connection string.
+        // Development so Swagger is served (an acceptance criterion).
         builder.UseEnvironment(Environments.Development);
-        builder.ConfigureAppConfiguration((_, config) =>
-            config.AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["ConnectionStrings:Postgres"] = _postgres.GetConnectionString(),
-                ["Jwt:SigningKey"] = "integration-test-signing-key-at-least-32-bytes-long-000",
-                ["Registry:NinPepper"] = "integration-test-nin-pepper",
-                ["CaptureLogs"] = "true", // enable the in-memory sink for the no-NIN-in-logs assertion
-            }));
+
+        // These MUST be UseSetting, not ConfigureAppConfiguration: under minimal hosting the app reads
+        // its connection string eagerly while composing services (AddInfrastructure), which happens
+        // before ConfigureAppConfiguration sources are layered in. Using UseSetting puts them in host
+        // configuration early enough to win — otherwise the tests silently fall back to appsettings.json
+        // and run against the developer's real database.
+        builder.UseSetting("ConnectionStrings:Postgres", _postgres.GetConnectionString());
+        builder.UseSetting("Jwt:SigningKey", "integration-test-signing-key-at-least-32-bytes-long-000");
+        builder.UseSetting("Registry:NinPepper", "integration-test-nin-pepper");
+        builder.UseSetting("CaptureLogs", "true"); // in-memory sink for the no-NIN-in-logs assertion
     }
 }
 
