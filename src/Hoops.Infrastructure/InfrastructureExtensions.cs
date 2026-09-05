@@ -72,6 +72,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IGameRecordingUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
         services.AddScoped<IGameRepository, GameRepository>();
         services.AddScoped<IGameRosterRepository, GameRosterRepository>();
+        services.AddScoped<IGameEventRepository, GameEventRepository>();
         services.AddScoped<IGameOfficialRepository, GameOfficialRepository>();
         services.AddScoped<IRosterSnapshotSource, RosterSnapshotSource>();
         services.AddScoped<IGameCompetitionSource, GameCompetitionSource>();

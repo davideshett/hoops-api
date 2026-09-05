@@ -1,0 +1,346 @@
+{
+ "players": [
+  {
+   "id": 1,
+   "team": "H",
+   "starter": true
+  },
+  {
+   "id": 2,
+   "team": "H",
+   "starter": true
+  },
+  {
+   "id": 3,
+   "team": "H",
+   "starter": true
+  },
+  {
+   "id": 4,
+   "team": "H",
+   "starter": true
+  },
+  {
+   "id": 5,
+   "team": "H",
+   "starter": true
+  },
+  {
+   "id": 6,
+   "team": "H",
+   "starter": false
+  },
+  {
+   "id": 11,
+   "team": "A",
+   "starter": true
+  },
+  {
+   "id": 12,
+   "team": "A",
+   "starter": true
+  },
+  {
+   "id": 13,
+   "team": "A",
+   "starter": true
+  },
+  {
+   "id": 14,
+   "team": "A",
+   "starter": true
+  },
+  {
+   "id": 15,
+   "team": "A",
+   "starter": true
+  },
+  {
+   "id": 16,
+   "team": "A",
+   "starter": false
+  }
+ ],
+ "events": [
+  {
+   "seq": 1,
+   "type": "GAME_START",
+   "period": 1,
+   "clock": 600000
+  },
+  {
+   "seq": 2,
+   "type": "PERIOD_START",
+   "period": 1,
+   "clock": 600000,
+   "sub": "Regulation"
+  },
+  {
+   "seq": 3,
+   "type": "CLOCK_START",
+   "period": 1,
+   "clock": 600000
+  },
+  {
+   "seq": 4,
+   "type": "FIELD_GOAL_MADE",
+   "period": 1,
+   "clock": 500000,
+   "sub": "TwoPoint",
+   "P": 1,
+   "X": 1150,
+   "Y": 0
+  },
+  {
+   "seq": 5,
+   "type": "FIELD_GOAL_MADE",
+   "period": 1,
+   "clock": 400000,
+   "sub": "TwoPoint",
+   "P": 11,
+   "X": 1150,
+   "Y": 0
+  },
+  {
+   "seq": 6,
+   "type": "FOUL",
+   "period": 1,
+   "clock": 300000,
+   "sub": "Personal",
+   "P": 13,
+   "S": 1
+  },
+  {
+   "seq": 7,
+   "type": "CLOCK_STOP",
+   "period": 1,
+   "clock": 0
+  },
+  {
+   "seq": 8,
+   "type": "PERIOD_END",
+   "period": 1,
+   "clock": 0
+  },
+  {
+   "seq": 9,
+   "type": "PERIOD_START",
+   "period": 2,
+   "clock": 600000,
+   "sub": "Regulation"
+  },
+  {
+   "seq": 10,
+   "type": "CLOCK_START",
+   "period": 2,
+   "clock": 600000
+  },
+  {
+   "seq": 11,
+   "type": "FIELD_GOAL_MADE",
+   "period": 2,
+   "clock": 500000,
+   "sub": "TwoPoint",
+   "P": 1,
+   "X": 1150,
+   "Y": 0
+  },
+  {
+   "seq": 12,
+   "type": "FIELD_GOAL_MADE",
+   "period": 2,
+   "clock": 400000,
+   "sub": "TwoPoint",
+   "P": 11,
+   "X": 1150,
+   "Y": 0
+  },
+  {
+   "seq": 13,
+   "type": "FOUL",
+   "period": 2,
+   "clock": 300000,
+   "sub": "Personal",
+   "P": 13,
+   "S": 1
+  },
+  {
+   "seq": 14,
+   "type": "CLOCK_STOP",
+   "period": 2,
+   "clock": 0
+  },
+  {
+   "seq": 15,
+   "type": "PERIOD_END",
+   "period": 2,
+   "clock": 0
+  },
+  {
+   "seq": 16,
+   "type": "PERIOD_START",
+   "period": 3,
+   "clock": 600000,
+   "sub": "Regulation"
+  },
+  {
+   "seq": 17,
+   "type": "CLOCK_START",
+   "period": 3,
+   "clock": 600000
+  },
+  {
+   "seq": 18,
+   "type": "FIELD_GOAL_MADE",
+   "period": 3,
+   "clock": 500000,
+   "sub": "TwoPoint",
+   "P": 1,
+   "X": 1150,
+   "Y": 0
+  },
+  {
+   "seq": 19,
+   "type": "FIELD_GOAL_MADE",
+   "period": 3,
+   "clock": 400000,
+   "sub": "TwoPoint",
+   "P": 11,
+   "X": 1150,
+   "Y": 0
+  },
+  {
+   "seq": 20,
+   "type": "FOUL",
+   "period": 3,
+   "clock": 300000,
+   "sub": "Personal",
+   "P": 13,
+   "S": 1
+  },
+  {
+   "seq": 21,
+   "type": "CLOCK_STOP",
+   "period": 3,
+   "clock": 0
+  },
+  {
+   "seq": 22,
+   "type": "PERIOD_END",
+   "period": 3,
+   "clock": 0
+  },
+  {
+   "seq": 23,
+   "type": "PERIOD_START",
+   "period": 4,
+   "clock": 600000,
+   "sub": "Regulation"
+  },
+  {
+   "seq": 24,
+   "type": "CLOCK_START",
+   "period": 4,
+   "clock": 600000
+  },
+  {
+   "seq": 25,
+   "type": "FIELD_GOAL_MADE",
+   "period": 4,
+   "clock": 500000,
+   "sub": "TwoPoint",
+   "P": 1,
+   "X": 1150,
+   "Y": 0
+  },
+  {
+   "seq": 26,
+   "type": "FIELD_GOAL_MADE",
+   "period": 4,
+   "clock": 400000,
+   "sub": "TwoPoint",
+   "P": 11,
+   "X": 1150,
+   "Y": 0
+  },
+  {
+   "seq": 27,
+   "type": "FOUL",
+   "period": 4,
+   "clock": 300000,
+   "sub": "Personal",
+   "P": 13,
+   "S": 1
+  },
+  {
+   "seq": 28,
+   "type": "CLOCK_STOP",
+   "period": 4,
+   "clock": 0
+  },
+  {
+   "seq": 29,
+   "type": "PERIOD_END",
+   "period": 4,
+   "clock": 0
+  },
+  {
+   "seq": 30,
+   "type": "PERIOD_START",
+   "period": 5,
+   "clock": 300000,
+   "sub": "Overtime"
+  },
+  {
+   "seq": 31,
+   "type": "CLOCK_START",
+   "period": 5,
+   "clock": 300000
+  },
+  {
+   "seq": 32,
+   "type": "FOUL",
+   "period": 5,
+   "clock": 250000,
+   "sub": "Personal",
+   "P": 13,
+   "S": 1
+  },
+  {
+   "seq": 33,
+   "type": "SUBSTITUTION",
+   "period": 5,
+   "clock": 249000,
+   "P": 13,
+   "S": 16
+  },
+  {
+   "seq": 34,
+   "type": "FIELD_GOAL_MADE",
+   "period": 5,
+   "clock": 100000,
+   "sub": "TwoPoint",
+   "P": 1,
+   "X": 1150,
+   "Y": 0
+  },
+  {
+   "seq": 35,
+   "type": "CLOCK_STOP",
+   "period": 5,
+   "clock": 0
+  },
+  {
+   "seq": 36,
+   "type": "PERIOD_END",
+   "period": 5,
+   "clock": 0
+  },
+  {
+   "seq": 37,
+   "type": "GAME_END",
+   "period": 5,
+   "clock": 0
+  }
+ ]
+}

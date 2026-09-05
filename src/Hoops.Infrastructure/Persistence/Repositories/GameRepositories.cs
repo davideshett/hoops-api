@@ -53,6 +53,34 @@ public sealed class GameRosterRepository(AppDbContext db) : IGameRosterRepositor
     public void AddRange(IEnumerable<GameRosterEntry> entries) => db.GameRosterEntries.AddRange(entries);
 }
 
+/// <summary>EF-backed <see cref="IGameEventRepository"/> over the append-only log.</summary>
+public sealed class GameEventRepository(AppDbContext db) : IGameEventRepository
+{
+    /// <inheritdoc />
+    public Task<GameEvent?> GetByIdAsync(GameId gameId, Guid eventId, CancellationToken ct = default)
+        => db.GameEvents.FirstOrDefaultAsync(e => e.GameId == gameId && e.Id == eventId, ct);
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<GameEvent>> ListForGameAsync(GameId gameId, long? afterSequence, CancellationToken ct = default)
+    {
+        var query = db.GameEvents.Where(e => e.GameId == gameId);
+        if (afterSequence is { } after)
+        {
+            query = query.Where(e => e.Sequence > after);
+        }
+
+        return await query.OrderBy(e => e.Sequence).ToListAsync(ct);
+    }
+
+    /// <inheritdoc />
+    public async Task<long> GetMaxSequenceAsync(GameId gameId, CancellationToken ct = default)
+        => await db.GameEvents.Where(e => e.GameId == gameId)
+            .Select(e => (long?)e.Sequence).MaxAsync(ct) ?? 0;
+
+    /// <inheritdoc />
+    public void Add(GameEvent gameEvent) => db.GameEvents.Add(gameEvent);
+}
+
 /// <summary>EF-backed <see cref="IGameOfficialRepository"/>.</summary>
 public sealed class GameOfficialRepository(AppDbContext db) : IGameOfficialRepository
 {

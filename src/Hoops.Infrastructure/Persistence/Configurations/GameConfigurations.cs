@@ -60,6 +60,45 @@ public sealed class GameRosterEntryConfiguration : IEntityTypeConfiguration<Game
     }
 }
 
+/// <summary>
+/// EF mapping for the append-only <see cref="GameEvent"/> log (§5.5). The primary key is the
+/// CLIENT-generated event id, which is what makes submission idempotent by construction.
+/// </summary>
+public sealed class GameEventConfiguration : IEntityTypeConfiguration<GameEvent>
+{
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+
+    /// <inheritdoc />
+    public void Configure(EntityTypeBuilder<GameEvent> builder)
+    {
+        builder.ToTable("game_events");
+        builder.HasKey(e => e.Id);
+
+        builder.Property(e => e.EventType).IsRequired();
+        builder.Property(e => e.ShotZone).HasConversion<string>();
+
+        var comparer = new ValueComparer<Dictionary<string, string>>(
+            (a, b) => JsonSerializer.Serialize(a, Json) == JsonSerializer.Serialize(b, Json),
+            v => JsonSerializer.Serialize(v, Json).GetHashCode(),
+            v => new Dictionary<string, string>(v));
+
+        builder.Property(e => e.Payload)
+            .HasColumnType("jsonb")
+            .HasConversion(
+                v => JsonSerializer.Serialize(v, Json),
+                v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, Json) ?? new Dictionary<string, string>())
+            .Metadata.SetValueComparer(comparer);
+
+        // The log is read in sequence order per game, and resynced from a sequence.
+        builder.HasIndex(e => new { e.GameId, e.Sequence }).IsUnique();
+        builder.HasIndex(e => new { e.GameId, e.EventType });
+        // Partial index for the assist/steal/block queries that ADR-002 turns into filters.
+        builder.HasIndex(e => e.SecondaryRosterEntryId).HasFilter("secondary_roster_entry_id IS NOT NULL");
+
+        builder.HasOne<Game>().WithMany().HasForeignKey(e => e.GameId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
 /// <summary>EF mapping for <see cref="GameOfficial"/>.</summary>
 public sealed class GameOfficialConfiguration : IEntityTypeConfiguration<GameOfficial>
 {

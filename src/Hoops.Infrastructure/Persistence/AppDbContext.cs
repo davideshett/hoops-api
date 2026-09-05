@@ -104,6 +104,9 @@ public sealed class AppDbContext : DbContext, IUnitOfWork, CompetitionsUnitOfWor
     /// <summary>Game officials.</summary>
     public DbSet<GameOfficial> GameOfficials => Set<GameOfficial>();
 
+    /// <summary>The append-only game event log — the source of truth (ADR-001).</summary>
+    public DbSet<GameEvent> GameEvents => Set<GameEvent>();
+
     /// <summary>
     /// The organisation in scope for the current request, used by tenant query filters. Falls back to
     /// an empty id on non-tenant-scoped requests, which matches no row.

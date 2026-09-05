@@ -21,6 +21,9 @@ public static class AuthPolicies
     /// <summary>A platform administrator (ADR-003): merge approval, NIN verification, anonymisation.</summary>
     public const string PlatformAdmin = "PlatformAdmin";
 
+    /// <summary>Anyone who may record at the scorer's table: Owner, Admin, CompetitionManager, or Statistician.</summary>
+    public const string OrgStatistician = "OrgStatistician";
+
     /// <summary>Registers all platform authorization policies and the membership handler.</summary>
     public static IServiceCollection AddHoopsAuthorization(this IServiceCollection services)
     {
@@ -44,6 +47,13 @@ public static class AuthPolicies
                 policy.RequireAuthenticatedUser();
                 policy.AddRequirements(new OrganisationMembershipRequirement(
                     OrganisationRole.Owner, OrganisationRole.Admin, OrganisationRole.CompetitionManager));
+            })
+            .AddPolicy(OrgStatistician, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.AddRequirements(new OrganisationMembershipRequirement(
+                    OrganisationRole.Owner, OrganisationRole.Admin,
+                    OrganisationRole.CompetitionManager, OrganisationRole.Statistician));
             })
             .AddPolicy(PlatformAdmin, policy =>
             {

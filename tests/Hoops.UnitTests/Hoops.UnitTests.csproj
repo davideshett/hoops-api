@@ -20,6 +20,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Golden fixtures are data the projector tests read at runtime. -->
+    <Content Include="GoldenFiles\**\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\Hoops.Api\Hoops.Api.csproj" />
   </ItemGroup>
 

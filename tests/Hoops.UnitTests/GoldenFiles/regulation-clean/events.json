@@ -1,0 +1,524 @@
+{
+ "players": [
+  {
+   "id": 1,
+   "team": "H",
+   "starter": true
+  },
+  {
+   "id": 2,
+   "team": "H",
+   "starter": true
+  },
+  {
+   "id": 3,
+   "team": "H",
+   "starter": true
+  },
+  {
+   "id": 4,
+   "team": "H",
+   "starter": true
+  },
+  {
+   "id": 5,
+   "team": "H",
+   "starter": true
+  },
+  {
+   "id": 11,
+   "team": "A",
+   "starter": true
+  },
+  {
+   "id": 12,
+   "team": "A",
+   "starter": true
+  },
+  {
+   "id": 13,
+   "team": "A",
+   "starter": true
+  },
+  {
+   "id": 14,
+   "team": "A",
+   "starter": true
+  },
+  {
+   "id": 15,
+   "team": "A",
+   "starter": true
+  }
+ ],
+ "events": [
+  {
+   "seq": 1,
+   "type": "GAME_START",
+   "period": 1,
+   "clock": 600000
+  },
+  {
+   "seq": 2,
+   "type": "PERIOD_START",
+   "period": 1,
+   "clock": 600000,
+   "sub": "Regulation"
+  },
+  {
+   "seq": 3,
+   "type": "CLOCK_START",
+   "period": 1,
+   "clock": 600000
+  },
+  {
+   "seq": 4,
+   "type": "FIELD_GOAL_MADE",
+   "period": 1,
+   "clock": 500000,
+   "sub": "TwoPoint",
+   "P": 1,
+   "S": 2,
+   "X": 1150,
+   "Y": 0
+  },
+  {
+   "seq": 5,
+   "type": "FIELD_GOAL_MADE",
+   "period": 1,
+   "clock": 400000,
+   "sub": "ThreePoint",
+   "P": 3,
+   "X": 500,
+   "Y": 0
+  },
+  {
+   "seq": 6,
+   "type": "FIELD_GOAL_MISSED",
+   "period": 1,
+   "clock": 300000,
+   "sub": "TwoPoint",
+   "P": 11,
+   "S": 4,
+   "X": 1150,
+   "Y": 0
+  },
+  {
+   "seq": 7,
+   "type": "REBOUND",
+   "period": 1,
+   "clock": 299000,
+   "sub": "Defensive",
+   "P": 5
+  },
+  {
+   "seq": 8,
+   "type": "TURNOVER",
+   "period": 1,
+   "clock": 250000,
+   "P": 12,
+   "S": 2
+  },
+  {
+   "seq": 9,
+   "type": "FOUL",
+   "period": 1,
+   "clock": 200000,
+   "sub": "Personal",
+   "P": 13,
+   "S": 1
+  },
+  {
+   "seq": 10,
+   "type": "FREE_THROW_MADE",
+   "period": 1,
+   "clock": 195000,
+   "P": 1
+  },
+  {
+   "seq": 11,
+   "type": "FREE_THROW_MISSED",
+   "period": 1,
+   "clock": 190000,
+   "P": 1
+  },
+  {
+   "seq": 12,
+   "type": "REBOUND",
+   "period": 1,
+   "clock": 189000,
+   "sub": "Defensive",
+   "P": 14
+  },
+  {
+   "seq": 13,
+   "type": "FIELD_GOAL_MADE",
+   "period": 1,
+   "clock": 100000,
+   "sub": "TwoPoint",
+   "P": 15,
+   "X": 1150,
+   "Y": 0
+  },
+  {
+   "seq": 14,
+   "type": "CLOCK_STOP",
+   "period": 1,
+   "clock": 0
+  },
+  {
+   "seq": 15,
+   "type": "PERIOD_END",
+   "period": 1,
+   "clock": 0
+  },
+  {
+   "seq": 16,
+   "type": "PERIOD_START",
+   "period": 2,
+   "clock": 600000,
+   "sub": "Regulation"
+  },
+  {
+   "seq": 17,
+   "type": "CLOCK_START",
+   "period": 2,
+   "clock": 600000
+  },
+  {
+   "seq": 18,
+   "type": "FIELD_GOAL_MADE",
+   "period": 2,
+   "clock": 500000,
+   "sub": "TwoPoint",
+   "P": 1,
+   "S": 2,
+   "X": 1150,
+   "Y": 0
+  },
+  {
+   "seq": 19,
+   "type": "FIELD_GOAL_MADE",
+   "period": 2,
+   "clock": 400000,
+   "sub": "ThreePoint",
+   "P": 3,
+   "X": 500,
+   "Y": 0
+  },
+  {
+   "seq": 20,
+   "type": "FIELD_GOAL_MISSED",
+   "period": 2,
+   "clock": 300000,
+   "sub": "TwoPoint",
+   "P": 11,
+   "S": 4,
+   "X": 1150,
+   "Y": 0
+  },
+  {
+   "seq": 21,
+   "type": "REBOUND",
+   "period": 2,
+   "clock": 299000,
+   "sub": "Defensive",
+   "P": 5
+  },
+  {
+   "seq": 22,
+   "type": "TURNOVER",
+   "period": 2,
+   "clock": 250000,
+   "P": 12,
+   "S": 2
+  },
+  {
+   "seq": 23,
+   "type": "FOUL",
+   "period": 2,
+   "clock": 200000,
+   "sub": "Personal",
+   "P": 13,
+   "S": 1
+  },
+  {
+   "seq": 24,
+   "type": "FREE_THROW_MADE",
+   "period": 2,
+   "clock": 195000,
+   "P": 1
+  },
+  {
+   "seq": 25,
+   "type": "FREE_THROW_MISSED",
+   "period": 2,
+   "clock": 190000,
+   "P": 1
+  },
+  {
+   "seq": 26,
+   "type": "REBOUND",
+   "period": 2,
+   "clock": 189000,
+   "sub": "Defensive",
+   "P": 14
+  },
+  {
+   "seq": 27,
+   "type": "FIELD_GOAL_MADE",
+   "period": 2,
+   "clock": 100000,
+   "sub": "TwoPoint",
+   "P": 15,
+   "X": 1150,
+   "Y": 0
+  },
+  {
+   "seq": 28,
+   "type": "CLOCK_STOP",
+   "period": 2,
+   "clock": 0
+  },
+  {
+   "seq": 29,
+   "type": "PERIOD_END",
+   "period": 2,
+   "clock": 0
+  },
+  {
+   "seq": 30,
+   "type": "PERIOD_START",
+   "period": 3,
+   "clock": 600000,
+   "sub": "Regulation"
+  },
+  {
+   "seq": 31,
+   "type": "CLOCK_START",
+   "period": 3,
+   "clock": 600000
+  },
+  {
+   "seq": 32,
+   "type": "FIELD_GOAL_MADE",
+   "period": 3,
+   "clock": 500000,
+   "sub": "TwoPoint",
+   "P": 1,
+   "S": 2,
+   "X": 1150,
+   "Y": 0
+  },
+  {
+   "seq": 33,
+   "type": "FIELD_GOAL_MADE",
+   "period": 3,
+   "clock": 400000,
+   "sub": "ThreePoint",
+   "P": 3,
+   "X": 500,
+   "Y": 0
+  },
+  {
+   "seq": 34,
+   "type": "FIELD_GOAL_MISSED",
+   "period": 3,
+   "clock": 300000,
+   "sub": "TwoPoint",
+   "P": 11,
+   "S": 4,
+   "X": 1150,
+   "Y": 0
+  },
+  {
+   "seq": 35,
+   "type": "REBOUND",
+   "period": 3,
+   "clock": 299000,
+   "sub": "Defensive",
+   "P": 5
+  },
+  {
+   "seq": 36,
+   "type": "TURNOVER",
+   "period": 3,
+   "clock": 250000,
+   "P": 12,
+   "S": 2
+  },
+  {
+   "seq": 37,
+   "type": "FOUL",
+   "period": 3,
+   "clock": 200000,
+   "sub": "Personal",
+   "P": 13,
+   "S": 1
+  },
+  {
+   "seq": 38,
+   "type": "FREE_THROW_MADE",
+   "period": 3,
+   "clock": 195000,
+   "P": 1
+  },
+  {
+   "seq": 39,
+   "type": "FREE_THROW_MISSED",
+   "period": 3,
+   "clock": 190000,
+   "P": 1
+  },
+  {
+   "seq": 40,
+   "type": "REBOUND",
+   "period": 3,
+   "clock": 189000,
+   "sub": "Defensive",
+   "P": 14
+  },
+  {
+   "seq": 41,
+   "type": "FIELD_GOAL_MADE",
+   "period": 3,
+   "clock": 100000,
+   "sub": "TwoPoint",
+   "P": 15,
+   "X": 1150,
+   "Y": 0
+  },
+  {
+   "seq": 42,
+   "type": "CLOCK_STOP",
+   "period": 3,
+   "clock": 0
+  },
+  {
+   "seq": 43,
+   "type": "PERIOD_END",
+   "period": 3,
+   "clock": 0
+  },
+  {
+   "seq": 44,
+   "type": "PERIOD_START",
+   "period": 4,
+   "clock": 600000,
+   "sub": "Regulation"
+  },
+  {
+   "seq": 45,
+   "type": "CLOCK_START",
+   "period": 4,
+   "clock": 600000
+  },
+  {
+   "seq": 46,
+   "type": "FIELD_GOAL_MADE",
+   "period": 4,
+   "clock": 500000,
+   "sub": "TwoPoint",
+   "P": 1,
+   "S": 2,
+   "X": 1150,
+   "Y": 0
+  },
+  {
+   "seq": 47,
+   "type": "FIELD_GOAL_MADE",
+   "period": 4,
+   "clock": 400000,
+   "sub": "ThreePoint",
+   "P": 3,
+   "X": 500,
+   "Y": 0
+  },
+  {
+   "seq": 48,
+   "type": "FIELD_GOAL_MISSED",
+   "period": 4,
+   "clock": 300000,
+   "sub": "TwoPoint",
+   "P": 11,
+   "S": 4,
+   "X": 1150,
+   "Y": 0
+  },
+  {
+   "seq": 49,
+   "type": "REBOUND",
+   "period": 4,
+   "clock": 299000,
+   "sub": "Defensive",
+   "P": 5
+  },
+  {
+   "seq": 50,
+   "type": "TURNOVER",
+   "period": 4,
+   "clock": 250000,
+   "P": 12,
+   "S": 2
+  },
+  {
+   "seq": 51,
+   "type": "FOUL",
+   "period": 4,
+   "clock": 200000,
+   "sub": "Personal",
+   "P": 13,
+   "S": 1
+  },
+  {
+   "seq": 52,
+   "type": "FREE_THROW_MADE",
+   "period": 4,
+   "clock": 195000,
+   "P": 1
+  },
+  {
+   "seq": 53,
+   "type": "FREE_THROW_MISSED",
+   "period": 4,
+   "clock": 190000,
+   "P": 1
+  },
+  {
+   "seq": 54,
+   "type": "REBOUND",
+   "period": 4,
+   "clock": 189000,
+   "sub": "Defensive",
+   "P": 14
+  },
+  {
+   "seq": 55,
+   "type": "FIELD_GOAL_MADE",
+   "period": 4,
+   "clock": 100000,
+   "sub": "TwoPoint",
+   "P": 15,
+   "X": 1150,
+   "Y": 0
+  },
+  {
+   "seq": 56,
+   "type": "CLOCK_STOP",
+   "period": 4,
+   "clock": 0
+  },
+  {
+   "seq": 57,
+   "type": "PERIOD_END",
+   "period": 4,
+   "clock": 0
+  },
+  {
+   "seq": 58,
+   "type": "GAME_END",
+   "period": 4,
+   "clock": 0
+  }
+ ]
+}

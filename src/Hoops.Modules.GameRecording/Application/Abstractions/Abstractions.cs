@@ -49,6 +49,25 @@ public interface IGameRosterRepository
     void AddRange(IEnumerable<GameRosterEntry> entries);
 }
 
+/// <summary>
+/// Persistence for the append-only <see cref="GameEvent"/> log. Rows are only ever inserted, or have
+/// <c>is_voided</c> flipped — never updated otherwise, never deleted.
+/// </summary>
+public interface IGameEventRepository
+{
+    /// <summary>Finds an event by its client-generated id (the idempotency key), or null.</summary>
+    Task<GameEvent?> GetByIdAsync(GameId gameId, Guid eventId, CancellationToken ct = default);
+
+    /// <summary>Lists a game's events in sequence order, optionally only those after a sequence.</summary>
+    Task<IReadOnlyList<GameEvent>> ListForGameAsync(GameId gameId, long? afterSequence, CancellationToken ct = default);
+
+    /// <summary>The highest sequence recorded for a game, or 0 when the log is empty.</summary>
+    Task<long> GetMaxSequenceAsync(GameId gameId, CancellationToken ct = default);
+
+    /// <summary>Stages a new event for insertion.</summary>
+    void Add(GameEvent gameEvent);
+}
+
 /// <summary>Persistence for <see cref="GameOfficial"/>.</summary>
 public interface IGameOfficialRepository
 {

@@ -148,6 +148,31 @@ public sealed class Game : ITenantScoped, IAuditableEntity
         return true;
     }
 
+    /// <summary>Starts play (RosterLocked → InProgress). Returns false if the transition is not allowed.</summary>
+    public bool Start(DateTimeOffset at)
+    {
+        if (Status != GameStatus.RosterLocked)
+        {
+            return false;
+        }
+
+        Status = GameStatus.InProgress;
+        StartedAt = at;
+        return true;
+    }
+
+    /// <summary>Ends play (InProgress → PendingReview). Returns false if the transition is not allowed.</summary>
+    public bool EndPlay()
+    {
+        if (Status != GameStatus.InProgress)
+        {
+            return false;
+        }
+
+        Status = GameStatus.PendingReview;
+        return true;
+    }
+
     /// <summary>Postpones a scheduled game.</summary>
     public bool Postpone()
     {
