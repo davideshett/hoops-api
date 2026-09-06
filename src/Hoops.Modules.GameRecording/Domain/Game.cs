@@ -60,6 +60,15 @@ public sealed class Game : ITenantScoped, IAuditableEntity
     /// <summary>When play started, once it has (Phase 4).</summary>
     public DateTimeOffset? StartedAt { get; private set; }
 
+    /// <summary>When the game was finalised; null unless it currently counts toward statistics.</summary>
+    public DateTimeOffset? FinalizedAt { get; private set; }
+
+    /// <summary>Why the game was reopened or forfeited. Required for both, and audited.</summary>
+    public string? AmendmentReason { get; private set; }
+
+    /// <summary>The team awarded a forfeit, if any.</summary>
+    public CompetitionTeamId? ForfeitWinnerCompetitionTeamId { get; private set; }
+
     /// <summary>The rules frozen onto this game at roster lock. Null until locked.</summary>
     public RuleSet? RuleSetSnapshot { get; private set; }
 
@@ -170,6 +179,71 @@ public sealed class Game : ITenantScoped, IAuditableEntity
         }
 
         Status = GameStatus.PendingReview;
+        return true;
+    }
+
+    /// <summary>
+    /// Finalises a reviewed game (PendingReview → Finalized). Only finalised games contribute to
+    /// leaderboards and career totals (ADR-006).
+    /// </summary>
+    public bool Finalize(DateTimeOffset at)
+    {
+        if (Status != GameStatus.PendingReview)
+        {
+            return false;
+        }
+
+        Status = GameStatus.Finalized;
+        FinalizedAt = at;
+        return true;
+    }
+
+    /// <summary>
+    /// Reopens a finalised game for correction (Finalized → Amending). Admin-only and audited; the
+    /// caller must invalidate the affected aggregates.
+    /// </summary>
+    public bool Reopen(string reason)
+    {
+        if (Status != GameStatus.Finalized || string.IsNullOrWhiteSpace(reason))
+        {
+            return false;
+        }
+
+        Status = GameStatus.Amending;
+        AmendmentReason = reason.Trim();
+        FinalizedAt = null;
+        return true;
+    }
+
+    /// <summary>Returns an amended game to review (Amending → PendingReview).</summary>
+    public bool SubmitAmendment()
+    {
+        if (Status != GameStatus.Amending)
+        {
+            return false;
+        }
+
+        Status = GameStatus.PendingReview;
+        return true;
+    }
+
+    /// <summary>Forfeits a game in favour of <paramref name="winningTeamId"/>.</summary>
+    public bool Forfeit(CompetitionTeamId winningTeamId, string reason, DateTimeOffset at)
+    {
+        if (Status is GameStatus.Finalized or GameStatus.Cancelled || string.IsNullOrWhiteSpace(reason))
+        {
+            return false;
+        }
+
+        if (winningTeamId != HomeCompetitionTeamId && winningTeamId != AwayCompetitionTeamId)
+        {
+            return false;
+        }
+
+        Status = GameStatus.Forfeited;
+        ForfeitWinnerCompetitionTeamId = winningTeamId;
+        AmendmentReason = reason.Trim();
+        FinalizedAt = at;
         return true;
     }
 

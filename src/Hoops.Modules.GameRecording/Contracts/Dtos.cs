@@ -61,3 +61,9 @@ public sealed record TeamRosterDto(CompetitionTeamId CompetitionTeamId, IReadOnl
 
 /// <summary>The game-setup screen: the fixture, its rule set, and both teams' current rosters.</summary>
 public sealed record GameSetupDto(GameDto Game, RuleSet RuleSet, IReadOnlyList<TeamRosterDto> Teams);
+
+/// <summary>Reopen a finalised game. A reason is mandatory and audited.</summary>
+public sealed record ReopenGameRequest(string Reason);
+
+/// <summary>Forfeit a game in favour of one team. A reason is mandatory and audited.</summary>
+public sealed record ForfeitGameRequest(CompetitionTeamId WinningCompetitionTeamId, string Reason);

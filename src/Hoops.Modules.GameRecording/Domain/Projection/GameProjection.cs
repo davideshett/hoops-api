@@ -182,6 +182,40 @@ public sealed record PeriodState
 }
 
 /// <summary>
+/// One continuous span during which a team had a fixed set of players on court. Derived from
+/// substitutions and clock events; the unit of lineup analytics and on/off plus-minus.
+/// </summary>
+public sealed record LineupStint
+{
+    /// <summary>The team whose lineup this describes.</summary>
+    public required CompetitionTeamId CompetitionTeamId { get; init; }
+
+    /// <summary>The players on court for the whole stint, in a stable order.</summary>
+    public required IReadOnlyList<GameRosterEntryId> Players { get; init; }
+
+    /// <summary>The period the stint occurred in.</summary>
+    public required int Period { get; init; }
+
+    /// <summary>Clock reading (ms remaining) when the stint began.</summary>
+    public required int StartClockMs { get; init; }
+
+    /// <summary>Clock reading (ms remaining) when the stint ended.</summary>
+    public required int EndClockMs { get; init; }
+
+    /// <summary>Seconds of running clock during the stint.</summary>
+    public required int SecondsPlayed { get; init; }
+
+    /// <summary>Points scored by this team during the stint.</summary>
+    public required int PointsFor { get; init; }
+
+    /// <summary>Points scored by the opponent during the stint.</summary>
+    public required int PointsAgainst { get; init; }
+
+    /// <summary>Net points while this lineup was on court.</summary>
+    public int PlusMinus => PointsFor - PointsAgainst;
+}
+
+/// <summary>
 /// The complete derived state of a game: statlines, period states, running score, and the live state
 /// the recording app renders. Produced only by the projector, never authored.
 /// </summary>
@@ -195,6 +229,9 @@ public sealed record GameProjection
 
     /// <summary>Per-period state.</summary>
     public required IReadOnlyList<PeriodState> Periods { get; init; }
+
+    /// <summary>Lineup stints, in chronological order.</summary>
+    public required IReadOnlyList<LineupStint> LineupStints { get; init; }
 
     /// <summary>Running score by team.</summary>
     public required IReadOnlyDictionary<CompetitionTeamId, int> Score { get; init; }

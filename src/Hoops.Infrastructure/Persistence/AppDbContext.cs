@@ -4,12 +4,14 @@ using Hoops.Modules.GameRecording.Domain;
 using Hoops.Modules.Identity.Application.Abstractions;
 using Hoops.Modules.Identity.Domain;
 using Hoops.Modules.Registry.Domain;
+using Hoops.Modules.Statistics.Domain;
 using Hoops.SharedKernel.Abstractions;
 using Hoops.SharedKernel.Identifiers;
 using Microsoft.EntityFrameworkCore;
 using CompetitionsUnitOfWork = Hoops.Modules.Competitions.Application.Abstractions.ICompetitionsUnitOfWork;
 using GameRecordingUnitOfWork = Hoops.Modules.GameRecording.Application.Abstractions.IGameRecordingUnitOfWork;
 using RegistryUnitOfWork = Hoops.Modules.Registry.Application.Abstractions.IRegistryUnitOfWork;
+using StatisticsUnitOfWork = Hoops.Modules.Statistics.Application.Abstractions.IStatisticsUnitOfWork;
 
 namespace Hoops.Infrastructure.Persistence;
 
@@ -19,7 +21,7 @@ namespace Hoops.Infrastructure.Persistence;
 /// query filter on every <see cref="ITenantScoped"/> entity so a forgotten <c>.Where()</c> can never
 /// leak across tenants. Also serves as the Identity module's unit of work.
 /// </summary>
-public sealed class AppDbContext : DbContext, IUnitOfWork, CompetitionsUnitOfWork, RegistryUnitOfWork, GameRecordingUnitOfWork
+public sealed class AppDbContext : DbContext, IUnitOfWork, CompetitionsUnitOfWork, RegistryUnitOfWork, GameRecordingUnitOfWork, StatisticsUnitOfWork
 {
     private static readonly MethodInfo SetTenantFilterMethod =
         typeof(AppDbContext).GetMethod(nameof(SetTenantFilter), BindingFlags.Instance | BindingFlags.NonPublic)!;
@@ -107,6 +109,30 @@ public sealed class AppDbContext : DbContext, IUnitOfWork, CompetitionsUnitOfWor
     /// <summary>The append-only game event log — the source of truth (ADR-001).</summary>
     public DbSet<GameEvent> GameEvents => Set<GameEvent>();
 
+    /// <summary>Persisted player statlines (derived).</summary>
+    public DbSet<PlayerGameStatline> PlayerGameStatlines => Set<PlayerGameStatline>();
+
+    /// <summary>Persisted team statlines (derived).</summary>
+    public DbSet<TeamGameStatline> TeamGameStatlines => Set<TeamGameStatline>();
+
+    /// <summary>Persisted per-period states (derived).</summary>
+    public DbSet<GamePeriodStateRow> GamePeriodStates => Set<GamePeriodStateRow>();
+
+    /// <summary>Persisted lineup stints (derived).</summary>
+    public DbSet<LineupStintRow> LineupStints => Set<LineupStintRow>();
+
+    /// <summary>Per-competition player aggregates (derived).</summary>
+    public DbSet<CompetitionPlayerAggregate> CompetitionPlayerAggregates => Set<CompetitionPlayerAggregate>();
+
+    /// <summary>Cross-organisation career aggregates (derived).</summary>
+    public DbSet<PlayerCareerAggregate> PlayerCareerAggregates => Set<PlayerCareerAggregate>();
+
+    /// <summary>Competition standings (derived).</summary>
+    public DbSet<CompetitionStanding> CompetitionStandings => Set<CompetitionStanding>();
+
+    /// <summary>The transactional outbox.</summary>
+    public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+
     /// <summary>
     /// The organisation in scope for the current request, used by tenant query filters. Falls back to
     /// an empty id on non-tenant-scoped requests, which matches no row.
@@ -136,6 +162,10 @@ public sealed class AppDbContext : DbContext, IUnitOfWork, CompetitionsUnitOfWor
         typeof(RegistryAudit),          // registry-wide audit trail
         typeof(RegistryLedgerEntry),    // registry-wide tamper-evident ledger
         typeof(MergeProposal),          // platform-admin queue across all orgs
+        typeof(PlayerCareerAggregate),  // a career spans organisations, exactly as identity does (§13)
+
+        // ── Infrastructure ──────────────────────────────────────────────────
+        typeof(OutboxMessage),          // durable work queue, not tenant data
     };
 
     /// <inheritdoc />

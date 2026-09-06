@@ -6,6 +6,7 @@ using Hoops.Modules.Competitions.Application.Abstractions;
 using Hoops.Modules.GameRecording.Application.Abstractions;
 using Hoops.Modules.Identity.Application.Abstractions;
 using Hoops.Modules.Registry.Application.Abstractions;
+using Hoops.Modules.Statistics.Application.Abstractions;
 using Hoops.SharedKernel.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -76,6 +77,12 @@ public static class InfrastructureExtensions
         services.AddScoped<IGameOfficialRepository, GameOfficialRepository>();
         services.AddScoped<IRosterSnapshotSource, RosterSnapshotSource>();
         services.AddScoped<IGameCompetitionSource, GameCompetitionSource>();
+
+        // Statistics module persistence.
+        services.AddScoped<IStatisticsUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
+        services.AddScoped<IStatisticsRepository, StatisticsRepository>();
+        services.AddScoped<IOutboxRepository, OutboxRepository>();
+        services.AddScoped<IGameStatisticsSource, GameStatisticsSource>();
 
         services.AddSingleton<IPasswordHasher, AspNetPasswordHasher>();
         services.AddSingleton<IClock, SystemClock>();

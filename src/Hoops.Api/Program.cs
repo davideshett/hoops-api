@@ -5,6 +5,7 @@ using FluentValidation;
 using FluentValidation.AspNetCore;
 using Hoops.Api.Auth;
 using Hoops.Api.Health;
+using Hoops.Api.BackgroundServices;
 using Hoops.Api.Http;
 using Hoops.Api.Logging;
 using Hoops.Infrastructure;
@@ -13,6 +14,7 @@ using Hoops.Modules.Competitions;
 using Hoops.Modules.GameRecording;
 using Hoops.Modules.Identity;
 using Hoops.Modules.Registry;
+using Hoops.Modules.Statistics;
 using Hoops.Modules.Identity.Application.Abstractions;
 using Hoops.SharedKernel.Abstractions;
 using Hoops.SharedKernel.Identifiers;
@@ -92,6 +94,11 @@ builder.Services.AddIdentityModule();
 builder.Services.AddCompetitionsModule();
 builder.Services.AddRegistryModule();
 builder.Services.AddGameRecordingModule();
+builder.Services.AddStatisticsModule();
+
+// Drains the outbox so finalisation-triggered recomputes survive a crash (§9.3).
+builder.Services.AddSingleton<OutboxDrainer>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<OutboxDrainer>());
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUser>();

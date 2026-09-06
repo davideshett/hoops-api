@@ -70,6 +70,8 @@ public sealed class GameProjector : IGameProjector
         private readonly Dictionary<CompetitionTeamId, TeamAccumulator> _teams = [];
         private readonly Dictionary<CompetitionTeamId, HashSet<GameRosterEntryId>> _onCourt = [];
         private readonly List<PeriodState> _completedPeriods = [];
+        private readonly List<LineupStint> _stints = [];
+        private readonly Dictionary<CompetitionTeamId, OpenStint> _openStints = [];
         private readonly Dictionary<CompetitionTeamId, int> _periodPoints = [];
         private readonly Dictionary<CompetitionTeamId, int> _periodTeamFouls = [];
 
@@ -132,6 +134,7 @@ public sealed class GameProjector : IGameProjector
                     ApplyPeriodEnd();
                     break;
                 case EventTypes.GameEnd:
+                    CloseStints();
                     _gameEnded = true;
                     _clockRunning = false;
                     break;
@@ -209,6 +212,11 @@ public sealed class GameProjector : IGameProjector
                         player.MillisecondsPlayed += elapsedMs;
                     }
                 }
+
+                if (_openStints.TryGetValue(team, out var stint))
+                {
+                    stint.MillisecondsPlayed += elapsedMs;
+                }
             }
         }
 
@@ -233,6 +241,8 @@ public sealed class GameProjector : IGameProjector
             {
                 _onCourt[player.CompetitionTeamId].Add(player.GameRosterEntryId);
             }
+
+            OpenStints();
         }
 
         private void ApplyPeriodStart(GameEvent e)
@@ -250,10 +260,13 @@ public sealed class GameProjector : IGameProjector
                 _periodPoints[team] = 0;
                 _periodTeamFouls[team] = 0; // team fouls reset each period
             }
+
+            OpenStints();
         }
 
         private void ApplyPeriodEnd()
         {
+            CloseStints();
             _periodEnded = true;
             _clockRunning = false;
             _completedPeriods.Add(new PeriodState
@@ -443,7 +456,12 @@ public sealed class GameProjector : IGameProjector
                 if (offender.FoulsCommitted >= limit || offender.TechnicalFouls >= technicalLimit)
                 {
                     offender.FouledOut = true;
-                    _onCourt[teamId].Remove(offender.Player.GameRosterEntryId);
+                    if (_onCourt[teamId].Contains(offender.Player.GameRosterEntryId))
+                    {
+                        CloseStint(teamId, e.GameClockMs);
+                        _onCourt[teamId].Remove(offender.Player.GameRosterEntryId);
+                        OpenStint(teamId, e.GameClockMs);
+                    }
                 }
             }
 
@@ -455,6 +473,14 @@ public sealed class GameProjector : IGameProjector
 
         private void ApplySubstitution(GameEvent e)
         {
+            // A lineup change ends the current stint and starts a new one for that team.
+            var affected = Player(e.GameRosterEntryId)?.Player.CompetitionTeamId
+                ?? Player(e.SecondaryRosterEntryId)?.Player.CompetitionTeamId;
+            if (affected is { } teamId)
+            {
+                CloseStint(teamId, e.GameClockMs);
+            }
+
             // Primary is the player going OUT, secondary the player coming IN.
             if (Player(e.GameRosterEntryId) is { } outgoing)
             {
@@ -464,6 +490,11 @@ public sealed class GameProjector : IGameProjector
             if (Player(e.SecondaryRosterEntryId) is { } incoming)
             {
                 _onCourt[incoming.Player.CompetitionTeamId].Add(incoming.Player.GameRosterEntryId);
+            }
+
+            if (affected is { } reopened)
+            {
+                OpenStint(reopened, e.GameClockMs);
             }
         }
 
@@ -496,7 +527,72 @@ public sealed class GameProjector : IGameProjector
                         player.PlusMinus += delta;
                     }
                 }
+
+                if (_openStints.TryGetValue(team, out var stint))
+                {
+                    if (team == teamId)
+                    {
+                        stint.PointsFor += points;
+                    }
+                    else
+                    {
+                        stint.PointsAgainst += points;
+                    }
+                }
             }
+        }
+
+        // ── lineup stints ────────────────────────────────────────────────────
+
+        private void OpenStints()
+        {
+            foreach (var team in Teams)
+            {
+                OpenStint(team, _gameClockMs);
+            }
+        }
+
+        private void OpenStint(CompetitionTeamId teamId, int clockMs)
+            => _openStints[teamId] = new OpenStint
+            {
+                Players = _onCourt[teamId].OrderBy(x => x.Value).ToList(),
+                Period = _currentPeriod,
+                StartClockMs = clockMs,
+            };
+
+        private void CloseStints()
+        {
+            foreach (var team in Teams.ToList())
+            {
+                CloseStint(team, _gameClockMs);
+            }
+        }
+
+        private void CloseStint(CompetitionTeamId teamId, int clockMs)
+        {
+            if (!_openStints.Remove(teamId, out var stint))
+            {
+                return;
+            }
+
+            // A stint with no elapsed time and no scoring carries no information; drop it so
+            // back-to-back substitutions do not litter the output with empty spans.
+            if (stint.MillisecondsPlayed == 0 && stint.PointsFor == 0 && stint.PointsAgainst == 0)
+            {
+                return;
+            }
+
+            _stints.Add(new LineupStint
+            {
+                CompetitionTeamId = teamId,
+                Players = stint.Players,
+                Period = stint.Period,
+                StartClockMs = stint.StartClockMs,
+                EndClockMs = clockMs,
+                SecondsPlayed = stint.MillisecondsPlayed / 1000,
+                PointsFor = stint.PointsFor,
+                PointsAgainst = stint.PointsAgainst,
+            });
         }
 
         public GameProjection ToProjection()
@@ -535,16 +631,49 @@ public sealed class GameProjector : IGameProjector
                     .Select(p => p.Player.GameRosterEntryId).OrderBy(x => x.Value).ToList(),
             };
 
-            return new GameProjection
+            var projection = new GameProjection
             {
                 PlayerStatlines = _players.Values
                     .OrderBy(p => p.Player.CompetitionTeamId.Value).ThenBy(p => p.Player.GameRosterEntryId.Value)
                     .Select(p => p.ToStatline()).ToList(),
                 TeamStatlines = _teams.OrderBy(kv => kv.Key.Value).Select(kv => kv.Value.ToStatline(kv.Key)).ToList(),
                 Periods = periods,
+                LineupStints = _stints,
                 Score = score,
                 LiveState = live,
             };
+
+            AssertInvariants(projection);
+            return projection;
+        }
+
+        /// <summary>
+        /// Arithmetic that must hold for any correctly projected game. Checked here, at the moment of
+        /// creation, rather than only in tests — a violation means the projector itself is wrong, and
+        /// failing loudly beats writing a silently corrupt statline to the permanent record.
+        /// </summary>
+        private static void AssertInvariants(GameProjection projection)
+        {
+            foreach (var team in projection.TeamStatlines)
+            {
+                var playerPoints = projection.PlayerStatlines
+                    .Where(p => p.CompetitionTeamId == team.CompetitionTeamId)
+                    .Sum(p => p.Points);
+                if (playerPoints != team.Points)
+                {
+                    throw new InvalidOperationException(
+                        $"Projection invariant violated: team {team.CompetitionTeamId} has {team.Points} points "
+                        + $"but its players sum to {playerPoints}.");
+                }
+            }
+
+            // Every basket credits one side and debits the other, so the whole game nets to zero.
+            var netPlusMinus = projection.PlayerStatlines.Sum(p => p.PlusMinus);
+            if (netPlusMinus != 0)
+            {
+                throw new InvalidOperationException(
+                    $"Projection invariant violated: plus/minus across all players is {netPlusMinus}, expected 0.");
+            }
         }
 
         private int TimeoutsRemaining(TeamAccumulator team)
@@ -558,6 +687,20 @@ public sealed class GameProjector : IGameProjector
 
             return Math.Max(0, allowance - team.TimeoutsTaken);
         }
+    }
+
+    /// <summary>A stint being accumulated; becomes a <see cref="LineupStint"/> when it closes.</summary>
+    private sealed class OpenStint
+    {
+        public required IReadOnlyList<GameRosterEntryId> Players { get; init; }
+
+        public required int Period { get; init; }
+
+        public required int StartClockMs { get; init; }
+
+        public int MillisecondsPlayed;
+        public int PointsFor;
+        public int PointsAgainst;
     }
 
     private sealed class PlayerAccumulator(GamePlayer player)

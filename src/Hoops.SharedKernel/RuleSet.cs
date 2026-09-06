@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Hoops.SharedKernel;
 
 /// <summary>
@@ -57,6 +59,47 @@ public sealed record RuleSet
     /// <summary>Minimum identity tier a player must hold to be rostered (§5A.2). Default 0 (open age).</summary>
     public int MinimumIdentityTier { get; init; }
 
+    /// <summary>Points awarded for a win in the standings table. FIBA league convention: 2.</summary>
+    public int PointsForWin { get; init; } = 2;
+
+    /// <summary>Points awarded for a loss. FIBA league convention: 1 (a played loss still scores).</summary>
+    public int PointsForLoss { get; init; } = 1;
+
+    /// <summary>Points awarded for a draw, where the rule set permits ties.</summary>
+    public int PointsForDraw { get; init; } = 1;
+
+    /// <summary>
+    /// Fraction of a competition's scheduled games a player must appear in to qualify for per-game
+    /// leaderboards. Without this, one 30-point game tops the scoring average forever (§9.3).
+    /// </summary>
+    public double QualificationGamesFraction { get; init; } = 0.75;
+
+    /// <summary>
+    /// Standings tiebreakers, applied in order until the tie breaks. Defaults to the FIBA order:
+    /// head-to-head record, then point differential, then points scored.
+    /// </summary>
+    public IReadOnlyList<StandingsTiebreaker> Tiebreakers { get; init; } =
+    [
+        StandingsTiebreaker.HeadToHead,
+        StandingsTiebreaker.PointDifferential,
+        StandingsTiebreaker.PointsScored,
+    ];
+
     /// <summary>The standard FIBA rule set.</summary>
     public static RuleSet Fiba() => new();
+
+    /// <summary>
+    /// Two rule sets are equal when they serialise identically. The synthesized record equality would
+    /// compare <see cref="Tiebreakers"/> by reference, so two rule sets with the same tiebreaker order
+    /// would compare unequal. Serialised comparison also matches exactly how the rule set is persisted
+    /// and change-tracked as jsonb, so equality here and in the database agree by construction.
+    /// </summary>
+    public bool Equals(RuleSet? other) => other is not null && Canonical(this) == Canonical(other);
+
+    /// <inheritdoc />
+    public override int GetHashCode() => Canonical(this).GetHashCode(StringComparison.Ordinal);
+
+    private static string Canonical(RuleSet rules) => JsonSerializer.Serialize(rules, CanonicalJson);
+
+    private static readonly JsonSerializerOptions CanonicalJson = new(JsonSerializerDefaults.Web);
 }

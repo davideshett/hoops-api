@@ -310,3 +310,115 @@ public readonly record struct GameOfficialId(Guid Value) : IStronglyTypedId<Game
     /// <inheritdoc />
     public override string ToString() => Value.ToString();
 }
+
+/// <summary>Identifies a persisted <c>PlayerGameStatline</c>.</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct PlayerGameStatlineId(Guid Value) : IStronglyTypedId<PlayerGameStatlineId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static PlayerGameStatlineId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static PlayerGameStatlineId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}
+
+/// <summary>Identifies a persisted <c>TeamGameStatline</c>.</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct TeamGameStatlineId(Guid Value) : IStronglyTypedId<TeamGameStatlineId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static TeamGameStatlineId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static TeamGameStatlineId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}
+
+/// <summary>Identifies a persisted <c>GamePeriodState</c>.</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct GamePeriodStateId(Guid Value) : IStronglyTypedId<GamePeriodStateId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static GamePeriodStateId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static GamePeriodStateId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}
+
+/// <summary>Identifies a <c>LineupStint</c> — one continuous span with a fixed five on court.</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct LineupStintId(Guid Value) : IStronglyTypedId<LineupStintId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static LineupStintId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static LineupStintId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}
+
+/// <summary>Identifies a <c>CompetitionPlayerAggregate</c>.</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct CompetitionPlayerAggregateId(Guid Value) : IStronglyTypedId<CompetitionPlayerAggregateId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static CompetitionPlayerAggregateId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static CompetitionPlayerAggregateId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}
+
+/// <summary>Identifies a <c>PlayerCareerAggregate</c>.</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct PlayerCareerAggregateId(Guid Value) : IStronglyTypedId<PlayerCareerAggregateId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static PlayerCareerAggregateId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static PlayerCareerAggregateId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}
+
+/// <summary>Identifies a <c>CompetitionStanding</c> row.</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct CompetitionStandingId(Guid Value) : IStronglyTypedId<CompetitionStandingId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static CompetitionStandingId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static CompetitionStandingId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}
+
+/// <summary>Identifies an <c>OutboxMessage</c>.</summary>
+[JsonConverter(typeof(StronglyTypedIdJsonConverterFactory))]
+public readonly record struct OutboxMessageId(Guid Value) : IStronglyTypedId<OutboxMessageId>
+{
+    /// <summary>Mints a new time-sortable (UUID v7) id.</summary>
+    public static OutboxMessageId New() => new(Guid.CreateVersion7());
+
+    /// <inheritdoc />
+    public static OutboxMessageId FromGuid(Guid value) => new(value);
+
+    /// <inheritdoc />
+    public override string ToString() => Value.ToString();
+}

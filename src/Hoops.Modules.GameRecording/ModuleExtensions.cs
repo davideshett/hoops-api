@@ -13,6 +13,7 @@ public static class ModuleExtensions
     {
         services.AddScoped<IGameService, GameService>();
         services.AddScoped<IEventRecordingService, EventRecordingService>();
+        services.AddScoped<IGameFinalizationService, GameFinalizationService>();
 
         // The projector is pure and stateless, so a singleton is safe and avoids per-request churn.
         services.AddSingleton<IGameProjector, GameProjector>();

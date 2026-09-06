@@ -2,6 +2,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Hoops.SharedKernel\Hoops.SharedKernel.csproj" />
+    <!-- Contracts only: GameRecording triggers a recompute on finalisation. Statistics does NOT
+         reference GameRecording, so the dependency stays one-directional. -->
+    <ProjectReference Include="..\Hoops.Modules.Statistics\Hoops.Modules.Statistics.csproj" />
   </ItemGroup>
 
   <ItemGroup>

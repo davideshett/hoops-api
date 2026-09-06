@@ -51,3 +51,16 @@ public interface IGameService
     /// <summary>The frozen game-roster snapshot.</summary>
     Task<Result<IReadOnlyList<GameRosterEntryDto>>> GetGameRosterAsync(GameId id, CancellationToken ct = default);
 }
+
+/// <summary>The gated transitions that decide whether a game counts (ADR-006).</summary>
+public interface IGameFinalizationService
+{
+    /// <summary>Finalises a reviewed game, so it begins contributing to leaderboards and careers.</summary>
+    Task<Result<GameDto>> FinalizeAsync(GameId gameId, CancellationToken ct = default);
+
+    /// <summary>Reopens a finalised game for correction, withdrawing its statistics until re-finalised.</summary>
+    Task<Result<GameDto>> ReopenAsync(GameId gameId, ReopenGameRequest request, CancellationToken ct = default);
+
+    /// <summary>Awards a forfeit to one of the two teams.</summary>
+    Task<Result<GameDto>> ForfeitAsync(GameId gameId, ForfeitGameRequest request, CancellationToken ct = default);
+}
