@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore BasketballStats.slnx
+
+      # Warnings are errors in Directory.Build.props, so this is the style gate too.
+      - name: Build
+        run: dotnet build BasketballStats.slnx --no-restore --configuration Release
+
+      # Integration tests spin up their own Postgres via Testcontainers, which uses the
+      # Docker daemon the runner already provides. No service container is needed.
+      - name: Test
+        run: dotnet test BasketballStats.slnx --no-build --configuration Release --logger "console;verbosity=normal"
+
+  migration-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install EF tools
+        run: dotnet tool install --global dotnet-ef --version 10.0.11
+
+      # Fails if the model has drifted from the migrations — i.e. someone changed an entity
+      # without adding a migration. Cheaper to catch here than on a deploy.
+      - name: Verify no pending model changes
+        run: |
+          dotnet ef migrations has-pending-model-changes \
+            --project src/Hoops.Infrastructure \
+            --startup-project src/Hoops.Api
+
+      # The deploy applies migrations as SQL, so prove the script generates cleanly.
+      - name: Generate idempotent migration script
+        run: |
+          dotnet ef migrations script --idempotent --output migrations.sql \
+            --project src/Hoops.Infrastructure \
+            --startup-project src/Hoops.Api
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: migrations
+          path: migrations.sql

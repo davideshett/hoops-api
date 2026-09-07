@@ -8,6 +8,7 @@ using Hoops.Api.Health;
 using Hoops.Api.BackgroundServices;
 using Hoops.Api.Http;
 using Hoops.Api.Logging;
+using Hoops.Api.Observability;
 using Hoops.Infrastructure;
 using Hoops.Infrastructure.Persistence;
 using Hoops.Modules.Competitions;
@@ -144,6 +145,9 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
 builder.Services.AddHoopsAuthorization();
 
 // ── Errors, health, docs ───────────────────────────────────────────────────
+builder.Services.AddHoopsObservability(builder.Configuration, "hoops-api");
+builder.Services.AddHoopsRateLimiting(builder.Configuration);
+
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
@@ -182,11 +186,13 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-// Apply migrations on startup so `docker compose up -d && dotnet run` is enough to be usable.
-using (var scope = app.Services.CreateScope())
+// Migrate on startup ONLY in development, so `docker compose up -d && dotnet run` is enough to be
+// usable locally. In every other environment migrations are applied as SQL ahead of the deploy (see
+// docs/deployment.md): with more than one instance running, startup migration is a race.
+if (app.Environment.IsDevelopment())
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    db.Database.Migrate();
+    using var scope = app.Services.CreateScope();
+    scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
 }
 
 app.UseExceptionHandler();
@@ -201,6 +207,8 @@ if (app.Environment.IsDevelopment())
         options.DocumentTitle = "Hoops API";
     });
 }
+
+app.UseRateLimiter();
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -3,7 +3,9 @@ using Hoops.Api.Http;
 using Hoops.Modules.GameRecording.Contracts;
 using Hoops.SharedKernel.Abstractions;
 using Hoops.SharedKernel.Identifiers;
+using Hoops.Api.Observability;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Hoops.Api.Controllers.GameRecording;
@@ -67,6 +69,7 @@ public sealed class GameEventsController : ApiControllerBase
     /// <response code="400">A validation rule rejected the event (§10).</response>
     /// <response code="409">The client's last known sequence is stale.</response>
     [Authorize(Policy = AuthPolicies.OrgStatistician)]
+    [EnableRateLimiting(ObservabilityExtensions.EventSubmissionPolicy)]
     [HttpPost("events")]
     [ProducesResponseType(typeof(EventAcceptedDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(EventAcceptedDto), StatusCodes.Status200OK)]
@@ -97,6 +100,7 @@ public sealed class GameEventsController : ApiControllerBase
     /// <response code="400">A validation rule rejected one of the events.</response>
     /// <response code="409">The client's last known sequence is stale.</response>
     [Authorize(Policy = AuthPolicies.OrgStatistician)]
+    [EnableRateLimiting(ObservabilityExtensions.EventSubmissionPolicy)]
     [HttpPost("events/batch")]
     [ProducesResponseType(typeof(EventAcceptedDto), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]

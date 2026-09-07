@@ -18,6 +18,13 @@ public sealed class ApiFactory : WebApplicationFactory<Program>, IAsyncLifetime
     /// <summary>The throwaway container's connection string — the only database tests may touch.</summary>
     public string ContainerConnectionString => _postgres.GetConnectionString();
 
+    /// <summary>Runs a command inside the database container — used by the backup/restore rehearsal.</summary>
+    public async Task<(long ExitCode, string Stdout, string Stderr)> ExecInContainerAsync(params string[] command)
+    {
+        var result = await _postgres.ExecAsync(command);
+        return (result.ExitCode ?? -1, result.Stdout ?? string.Empty, result.Stderr ?? string.Empty);
+    }
+
     /// <summary>Starts the container before any test in the collection runs.</summary>
     public async Task InitializeAsync() => await _postgres.StartAsync();
 

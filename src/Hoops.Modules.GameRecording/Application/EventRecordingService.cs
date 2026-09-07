@@ -6,6 +6,7 @@ using Hoops.Modules.GameRecording.Domain.Validation;
 using Hoops.SharedKernel.Abstractions;
 using Hoops.SharedKernel.Identifiers;
 using Hoops.SharedKernel.Results;
+using Microsoft.Extensions.Logging;
 
 namespace Hoops.Modules.GameRecording.Application;
 
@@ -23,11 +24,13 @@ public sealed class EventRecordingService : IEventRecordingService
     private readonly IGameProjector _projector;
     private readonly EventValidationPipeline _pipeline = new();
     private readonly IClock _clock;
+    private readonly ILogger<EventRecordingService> _logger;
 
     /// <summary>Creates the service.</summary>
     public EventRecordingService(
         IGameRepository games, IGameEventRepository events, IGameRosterRepository rosters,
-        IGameRecordingUnitOfWork unitOfWork, IGameProjector projector, IClock clock)
+        IGameRecordingUnitOfWork unitOfWork, IGameProjector projector, IClock clock,
+        ILogger<EventRecordingService> logger)
     {
         _games = games;
         _events = events;
@@ -35,6 +38,7 @@ public sealed class EventRecordingService : IEventRecordingService
         _unitOfWork = unitOfWork;
         _projector = projector;
         _clock = clock;
+        _logger = logger;
     }
 
     /// <inheritdoc />
@@ -254,6 +258,16 @@ public sealed class EventRecordingService : IEventRecordingService
     private async Task<Result<EventAcceptedDto>> SubmitInternalAsync(
         Game game, UserId userId, IReadOnlyList<SubmitEventRequest> requests, bool allowOverride, string? overrideReason, CancellationToken ct)
     {
+        using var activity = RecordingTelemetry.StartSubmission(game.Id.Value, requests.Count);
+
+        // Every log line on this path carries the game, so a failure at the scorer's table can be
+        // traced without cross-referencing anything.
+        using var logScope = _logger.BeginScope(new Dictionary<string, object>
+        {
+            ["gameId"] = game.Id.Value,
+            ["userId"] = userId.Value,
+        });
+
         var (context, existing) = await LoadAsync(game, ct);
         var log = existing.ToList();
         var sequence = log.Count == 0 ? 0 : log.Max(e => e.Sequence);
@@ -264,6 +278,10 @@ public sealed class EventRecordingService : IEventRecordingService
         {
             if (!EventTypes.All.Contains(request.EventType))
             {
+                _logger.LogWarning(
+                    "Rejected unknown event type {EventType} at sequence {Sequence} for event {EventId}.",
+                    request.EventType, sequence + 1, request.EventId);
+                RecordingTelemetry.RecordOutcome(activity, "rejected", ruleCode: "UNKNOWN_EVENT_TYPE");
                 return Error.Validation("UNKNOWN_EVENT_TYPE", $"'{request.EventType}' is not a recognised event type.");
             }
 
@@ -281,6 +299,18 @@ public sealed class EventRecordingService : IEventRecordingService
             if (!validation.IsAccepted)
             {
                 var failure = validation.Failure!;
+
+                // Enough context to reconstruct exactly what the official tapped: the rule that
+                // rejected it, the event's identity and position, and who and what it referred to.
+                _logger.LogWarning(
+                    "Rejected {EventType}/{EventSubtype} at sequence {Sequence} by rule {RuleCode}: {RuleMessage}. "
+                    + "eventId={EventId} period={Period} clockMs={GameClockMs} team={CompetitionTeamId} "
+                    + "actor={GameRosterEntryId} secondary={SecondaryRosterEntryId}",
+                    candidate.EventType, candidate.EventSubtype ?? "-", candidate.Sequence, failure.Code,
+                    failure.Message, candidate.Id, candidate.Period, candidate.GameClockMs,
+                    candidate.CompetitionTeamId, candidate.GameRosterEntryId, candidate.SecondaryRosterEntryId);
+
+                RecordingTelemetry.RecordOutcome(activity, "rejected", candidate.Sequence, failure.Code);
                 return failure.Tier == RuleTier.Overridable
                     ? Error.Validation(failure.Code!, $"{failure.Message} Submit with override=true and a reason to record it anyway.")
                     : Error.Validation(failure.Code!, failure.Message!);
@@ -289,6 +319,11 @@ public sealed class EventRecordingService : IEventRecordingService
             if (validation.WasOverridden)
             {
                 candidate.MarkOverridden(validation.Failure!.Code!, overrideReason);
+                _logger.LogWarning(
+                    "Recorded {EventType} at sequence {Sequence} OVERRIDING rule {RuleCode}. "
+                    + "eventId={EventId} reason={OverrideReason}",
+                    candidate.EventType, candidate.Sequence, validation.Failure.Code, candidate.Id,
+                    overrideReason ?? "(none given)");
             }
 
             _events.Add(candidate);
@@ -299,7 +334,11 @@ public sealed class EventRecordingService : IEventRecordingService
         await _unitOfWork.SaveChangesAsync(ct);
 
         var projection = _projector.Project(context, log);
-        return new EventAcceptedDto(last!.Sequence, Mappers.ToDto(last), Mappers.ToDto(projection.LiveState));
+        RecordingTelemetry.RecordOutcome(activity, "accepted", last!.Sequence);
+        _logger.LogInformation(
+            "Recorded {EventCount} event(s), now at sequence {Sequence}.", requests.Count, last.Sequence);
+
+        return new EventAcceptedDto(last.Sequence, Mappers.ToDto(last), Mappers.ToDto(projection.LiveState));
     }
 
     private async Task<Result<EventAcceptedDto>> AppendVoidAsync(
