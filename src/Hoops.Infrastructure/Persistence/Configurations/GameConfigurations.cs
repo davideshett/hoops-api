@@ -95,6 +95,11 @@ public sealed class GameEventConfiguration : IEntityTypeConfiguration<GameEvent>
         // Partial index for the assist/steal/block queries that ADR-002 turns into filters.
         builder.HasIndex(e => e.SecondaryRosterEntryId).HasFilter("secondary_roster_entry_id IS NOT NULL");
 
+        // Shot charts read only shot events with coordinates; the partial index keeps that from
+        // scanning the whole log, which is dominated by clock and flow events.
+        builder.HasIndex(e => new { e.GameId, e.GameRosterEntryId })
+            .HasFilter("shot_x_cm IS NOT NULL AND is_voided = false");
+
         builder.HasOne<Game>().WithMany().HasForeignKey(e => e.GameId).OnDelete(DeleteBehavior.Cascade);
     }
 }

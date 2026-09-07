@@ -20,6 +20,7 @@ public sealed class PlayerGameStatlineConfiguration : IEntityTypeConfiguration<P
         builder.HasIndex(s => new { s.GameId, s.GameRosterEntryId }).IsUnique();
         builder.HasIndex(s => new { s.CompetitionId, s.PlayerId });
         builder.HasIndex(s => s.PlayerId); // career queries span competitions
+        builder.HasIndex(s => s.OrganisationId); // all-time records scan one organisation
 
         builder.HasOne<Game>().WithMany().HasForeignKey(s => s.GameId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne<Player>().WithMany().HasForeignKey(s => s.PlayerId).OnDelete(DeleteBehavior.Restrict);
@@ -80,6 +81,9 @@ public sealed class CompetitionPlayerAggregateConfiguration : IEntityTypeConfigu
 
         // Leaderboards read qualified players ordered by a stat; the partial index keeps that cheap.
         builder.HasIndex(a => new { a.CompetitionId, a.Points }).HasFilter("is_qualified");
+
+        // The career page reads every competition a player has appeared in.
+        builder.HasIndex(a => a.PlayerId);
 
         builder.HasOne<Competition>().WithMany().HasForeignKey(a => a.CompetitionId).OnDelete(DeleteBehavior.Cascade);
         builder.HasOne<Player>().WithMany().HasForeignKey(a => a.PlayerId).OnDelete(DeleteBehavior.Restrict);

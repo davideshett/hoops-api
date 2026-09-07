@@ -141,6 +141,16 @@ public sealed class GameEvent : ITenantScoped
             e.Payload = new Dictionary<string, string>(payload);
         }
 
+        // Points are derived from the event type and subtype rather than trusted from the client, for
+        // the same reason the server recomputes shot zone and distance: a client-supplied value that
+        // disagrees with the event would corrupt every derived statistic downstream.
+        e.Points = eventType switch
+        {
+            EventTypes.FieldGoalMade => string.Equals(eventSubtype, EventSubtypes.ThreePoint, StringComparison.Ordinal) ? 3 : 2,
+            EventTypes.FreeThrowMade => 1,
+            _ => points,
+        };
+
         // The server always recomputes zone and distance from the coordinates (§8).
         if (shotXCm.HasValue && shotYCm.HasValue)
         {

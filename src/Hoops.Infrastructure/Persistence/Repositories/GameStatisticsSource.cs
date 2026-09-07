@@ -54,11 +54,18 @@ public sealed class GameStatisticsSource(AppDbContext db, IGameProjector project
         var events = await db.GameEvents.IgnoreQueryFilters()
             .Where(e => e.GameId == gameId).OrderBy(e => e.Sequence).ToListAsync(ct);
 
+        // The game roster snapshot stays frozen forever — it is the record of who was on the sheet.
+        // But statistics must follow a MERGED player onto the surviving record, or a recompute would
+        // silently undo every merge. So the snapshot is read as-is and the player id resolved through
+        // the merge chain here, on the write path (§5A.5).
+        var survivors = await ResolveMergesAsync(roster.Select(r => r.PlayerId).Distinct().ToList(), ct);
+
         var context = new GameContext(
             game.Id,
             game.HomeCompetitionTeamId,
             game.AwayCompetitionTeamId,
-            roster.Select(r => new GamePlayer(r.Id, r.CompetitionTeamId, r.PlayerId, r.IsStarter)).ToList(),
+            roster.Select(r => new GamePlayer(
+                r.Id, r.CompetitionTeamId, survivors.GetValueOrDefault(r.PlayerId, r.PlayerId), r.IsStarter)).ToList(),
             game.RuleSetSnapshot);
 
         // The same pure projector the live path uses — persisted statistics and the live box score can
@@ -81,6 +88,40 @@ public sealed class GameStatisticsSource(AppDbContext db, IGameProjector project
             projection.LineupStints.Select(s => new ProjectedStint(
                 s.CompetitionTeamId, s.Period, string.Join(',', s.Players.Select(p => p.Value)),
                 s.SecondsPlayed, s.PointsFor, s.PointsAgainst)).ToList());
+    }
+
+    /// <summary>Maps each player id to the record it has ultimately been merged into.</summary>
+    private async Task<Dictionary<PlayerId, PlayerId>> ResolveMergesAsync(
+        IReadOnlyList<PlayerId> playerIds, CancellationToken ct)
+    {
+        var resolved = new Dictionary<PlayerId, PlayerId>();
+        var merged = await db.Players.IgnoreQueryFilters()
+            .Where(p => playerIds.Contains(p.Id) && p.MergedIntoId != null)
+            .Select(p => new { p.Id, p.MergedIntoId })
+            .ToListAsync(ct);
+
+        foreach (var row in merged)
+        {
+            // Merges resolve transitively on write, so one hop is normally enough; the loop guards
+            // against a chain written before that guarantee held.
+            var target = row.MergedIntoId!.Value;
+            var guard = 0;
+            while (guard++ < 10)
+            {
+                var next = await db.Players.IgnoreQueryFilters()
+                    .Where(p => p.Id == target).Select(p => p.MergedIntoId).FirstOrDefaultAsync(ct);
+                if (next is null)
+                {
+                    break;
+                }
+
+                target = next.Value;
+            }
+
+            resolved[row.Id] = target;
+        }
+
+        return resolved;
     }
 
     private static GameFacts ToFacts(Game game) => new(

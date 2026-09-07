@@ -32,3 +32,41 @@ public interface IStatisticsQueryService
     /// <summary>A player's career totals.</summary>
     Task<Result<PlayerCareerAggregateDto>> GetCareerAsync(PlayerId playerId, CancellationToken ct = default);
 }
+
+/// <summary>
+/// The historical query surface — the thing the product is actually sold on (§11). Every figure here
+/// is read from the derived tables, which are themselves rebuildable from the event log.
+/// </summary>
+public interface IHistoryQueryService
+{
+    /// <summary>One leaderboard. <paramref name="per"/> is <c>total</c> or <c>game</c>; per-game boards
+    /// include only qualified players, totals boards include everyone (§9.3).</summary>
+    Task<Result<LeaderboardDto>> GetLeadersAsync(
+        CompetitionId competitionId, string stat, string per, int limit, CancellationToken ct = default);
+
+    /// <summary>Every headline leaderboard in one round trip.</summary>
+    Task<Result<AllLeadersDto>> GetAllLeadersAsync(
+        CompetitionId competitionId, string per, int limit, CancellationToken ct = default);
+
+    /// <summary>A player's career totals plus the per-competition breakdown.</summary>
+    Task<Result<CareerPageDto>> GetCareerPageAsync(PlayerId playerId, CancellationToken ct = default);
+
+    /// <summary>A game's play-by-play, with the running score after each entry.</summary>
+    Task<Result<IReadOnlyList<PlayByPlayEntryDto>>> GetPlayByPlayAsync(
+        GameId gameId, int? period, CancellationToken ct = default);
+
+    /// <summary>A game's shot chart, optionally filtered to one team or player.</summary>
+    Task<Result<ShotChartDto>> GetGameShotChartAsync(
+        GameId gameId, CompetitionTeamId? teamId, PlayerId? playerId, CancellationToken ct = default);
+
+    /// <summary>A player's shot chart across one competition, or their whole career when null.</summary>
+    Task<Result<ShotChartDto>> GetPlayerShotChartAsync(
+        PlayerId playerId, CompetitionId? competitionId, CancellationToken ct = default);
+
+    /// <summary>A game's lineups, aggregated from its stints.</summary>
+    Task<Result<IReadOnlyList<LineupSummaryDto>>> GetLineupsAsync(GameId gameId, CancellationToken ct = default);
+
+    /// <summary>An organisation's all-time single-game and career records.</summary>
+    Task<Result<OrganisationRecordsDto>> GetRecordsAsync(
+        OrganisationId organisationId, int limit, CancellationToken ct = default);
+}

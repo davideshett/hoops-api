@@ -137,3 +137,19 @@ public interface IRegistryUnitOfWork
     /// <summary>Persists all staged changes.</summary>
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 }
+
+/// <summary>
+/// Repoints derived statistics when two player records merge (§5A.5). Implemented in Infrastructure so
+/// the Registry module never references the Statistics module's tables — it only declares that a merge
+/// must carry the losing record's history across.
+/// </summary>
+public interface IPlayerStatisticsRepointer
+{
+    /// <summary>
+    /// Moves every persisted statline from <paramref name="sourcePlayerIds"/> onto
+    /// <paramref name="survivorId"/>, so the survivor's career includes the merged records' games.
+    /// Returns the number of rows moved.
+    /// </summary>
+    Task<int> RepointStatlinesAsync(
+        IReadOnlyCollection<PlayerId> sourcePlayerIds, PlayerId survivorId, CancellationToken ct = default);
+}

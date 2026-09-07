@@ -68,6 +68,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IRegistryLedgerRepository, RegistryLedgerRepository>();
         services.AddScoped<IMergeProposalRepository, MergeProposalRepository>();
         services.AddScoped<IRosterRepository, RosterRepository>();
+        services.AddScoped<IPlayerStatisticsRepointer, PlayerStatisticsRepointer>();
 
         // GameRecording module persistence.
         services.AddScoped<IGameRecordingUnitOfWork>(sp => sp.GetRequiredService<AppDbContext>());
@@ -83,6 +84,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IStatisticsRepository, StatisticsRepository>();
         services.AddScoped<IOutboxRepository, OutboxRepository>();
         services.AddScoped<IGameStatisticsSource, GameStatisticsSource>();
+        services.AddScoped<IHistoryReadRepository, HistoryReadRepository>();
 
         services.AddSingleton<IPasswordHasher, AspNetPasswordHasher>();
         services.AddSingleton<IClock, SystemClock>();

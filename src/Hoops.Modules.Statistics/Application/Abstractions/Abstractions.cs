@@ -150,3 +150,44 @@ public interface IStatisticsUnitOfWork
     /// <summary>Persists all staged changes.</summary>
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 }
+
+/// <summary>One shot as stored in the event log, flattened for charting.</summary>
+public sealed record ShotRow(
+    GameId GameId, PlayerId? PlayerId, CompetitionTeamId? CompetitionTeamId, bool Made, int Points,
+    int XCm, int YCm, string Zone, int DistanceCm, int Period, int GameClockMs);
+
+/// <summary>One play-by-play row, resolved to registry players.</summary>
+public sealed record PlayRow(
+    long Sequence, int Period, int GameClockMs, string EventType, string? EventSubtype,
+    CompetitionTeamId? CompetitionTeamId, PlayerId? PlayerId, PlayerId? SecondaryPlayerId,
+    int? Points, string? ShotZone, int? ShotDistanceCm, bool IsVoided);
+
+/// <summary>
+/// Read models for the historical query surface. These read the derived tables and — for shot charts
+/// and play-by-play, which need per-event detail no aggregate carries — the event log itself.
+/// </summary>
+public interface IHistoryReadRepository
+{
+    /// <summary>A game's play-by-play rows, in sequence order, resolved to registry players.</summary>
+    Task<IReadOnlyList<PlayRow>> ListPlaysAsync(GameId gameId, int? period, CancellationToken ct = default);
+
+    /// <summary>A game's shots, optionally filtered by team or player.</summary>
+    Task<IReadOnlyList<ShotRow>> ListGameShotsAsync(
+        GameId gameId, CompetitionTeamId? teamId, PlayerId? playerId, CancellationToken ct = default);
+
+    /// <summary>A player's shots across one competition, or their whole career when null.</summary>
+    Task<IReadOnlyList<ShotRow>> ListPlayerShotsAsync(
+        PlayerId playerId, CompetitionId? competitionId, CancellationToken ct = default);
+
+    /// <summary>A game's lineup stints, with each stint's players resolved to registry ids.</summary>
+    Task<IReadOnlyList<(CompetitionTeamId TeamId, IReadOnlyList<PlayerId> Players, int Seconds, int For, int Against)>>
+        ListLineupsAsync(GameId gameId, CancellationToken ct = default);
+
+    /// <summary>Every statline in an organisation, for all-time records.</summary>
+    Task<IReadOnlyList<PlayerGameStatline>> ListStatlinesForOrganisationAsync(
+        OrganisationId organisationId, CancellationToken ct = default);
+
+    /// <summary>Every competition aggregate a player has, for the career breakdown.</summary>
+    Task<IReadOnlyList<CompetitionPlayerAggregate>> ListAggregatesForPlayerAsync(
+        PlayerId playerId, CancellationToken ct = default);
+}

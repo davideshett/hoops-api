@@ -15,6 +15,7 @@ public sealed class MergeService : IMergeService
     private readonly IPlayerRepository _players;
     private readonly IPlayerOrgLinkRepository _links;
     private readonly IRosterRepository _rosters;
+    private readonly IPlayerStatisticsRepointer _statistics;
     private readonly IRegistryLedgerRepository _ledger;
     private readonly IRegistryAuditRepository _audits;
     private readonly IRegistryUnitOfWork _unitOfWork;
@@ -24,8 +25,9 @@ public sealed class MergeService : IMergeService
     public MergeService(
         IMergeProposalRepository proposals, IPlayerRepository players, IPlayerOrgLinkRepository links,
         IRosterRepository rosters, IRegistryLedgerRepository ledger, IRegistryAuditRepository audits,
-        IRegistryUnitOfWork unitOfWork, IClock clock)
+        IPlayerStatisticsRepointer statistics, IRegistryUnitOfWork unitOfWork, IClock clock)
     {
+        _statistics = statistics;
         _proposals = proposals;
         _players = players;
         _links = links;
@@ -153,6 +155,14 @@ public sealed class MergeService : IMergeService
 
             survivor.RaiseTierTo(source.IdentityTier);
             source.MergeInto(survivor.Id);
+        }
+
+        // Carry the losing records' derived statistics across too. Without this the survivor's career
+        // page would silently lose every game the duplicate played — which is exactly the history the
+        // registry exists to preserve.
+        if (sources.Count > 0)
+        {
+            await _statistics.RepointStatlinesAsync(sources.Select(s => s.Id).ToList(), survivor.Id, ct);
         }
 
         return Result.Success();

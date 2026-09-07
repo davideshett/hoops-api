@@ -12,6 +12,7 @@ public static class ModuleExtensions
     {
         services.AddScoped<IStatisticsRecomputeService, StatisticsRecomputeService>();
         services.AddScoped<IStatisticsQueryService, StatisticsQueryService>();
+        services.AddScoped<IHistoryQueryService, HistoryQueryService>();
         return services;
     }
 }
