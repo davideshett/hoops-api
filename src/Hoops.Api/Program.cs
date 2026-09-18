@@ -31,11 +31,21 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// The NIN pepper (ADR-008) must come from a secret in real environments. For local development only,
-// supply a stable in-memory default so `dotnet run` works without ever committing a pepper to a file.
-if (builder.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(builder.Configuration["Registry:NinPepper"]))
+// Both signing secrets must come from a secret store in real environments. For local development
+// only, supply stable in-memory defaults so `dotnet run` works — in memory, never in a committed
+// file, because a value in appsettings.json binds in every environment and would turn a forgotten
+// secret into a silently insecure production boot rather than a failed one.
+if (builder.Environment.IsDevelopment())
 {
-    builder.Configuration["Registry:NinPepper"] = "dev-only-insecure-nin-pepper-change-me";
+    if (string.IsNullOrWhiteSpace(builder.Configuration["Registry:NinPepper"]))
+    {
+        builder.Configuration["Registry:NinPepper"] = "dev-only-insecure-nin-pepper-change-me";
+    }
+
+    if (string.IsNullOrWhiteSpace(builder.Configuration[$"{JwtOptions.SectionName}:SigningKey"]))
+    {
+        builder.Configuration[$"{JwtOptions.SectionName}:SigningKey"] = JwtOptions.DevelopmentPlaceholderKey;
+    }
 }
 
 builder.Host.UseSerilog((context, loggerConfiguration) =>
@@ -53,10 +63,18 @@ builder.Host.UseSerilog((context, loggerConfiguration) =>
 });
 
 // ── Options ────────────────────────────────────────────────────────────────
+var isDevelopment = builder.Environment.IsDevelopment();
+
 builder.Services.AddOptions<JwtOptions>()
     .Bind(builder.Configuration.GetSection(JwtOptions.SectionName))
     .Validate(o => !string.IsNullOrWhiteSpace(o.SigningKey) && Encoding.UTF8.GetByteCount(o.SigningKey) >= 32,
-        "Jwt:SigningKey must be configured and at least 32 bytes.")
+        "Jwt:SigningKey must be configured and at least 32 bytes. Set the Jwt__SigningKey environment "
+        + "variable from your secret store.")
+    // Length alone cannot tell a real secret from the development placeholder, which is long enough to
+    // pass and is public. Outside Development it is refused by name.
+    .Validate(o => isDevelopment || o.SigningKey != JwtOptions.DevelopmentPlaceholderKey,
+        "Jwt:SigningKey is the development placeholder, which is published in source. Supply a real "
+        + "secret via Jwt__SigningKey.")
     .ValidateOnStart();
 
 // Resolve AuthOptions from the bound JwtOptions so it reflects the final configuration (including

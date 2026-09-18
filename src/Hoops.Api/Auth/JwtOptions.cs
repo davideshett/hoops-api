@@ -9,6 +9,15 @@ public sealed class JwtOptions
     /// <summary>The configuration section name.</summary>
     public const string SectionName = "Jwt";
 
+    /// <summary>
+    /// The obvious placeholder Development substitutes when no secret is configured. It is named here
+    /// rather than left in <c>appsettings.json</c> for one reason: a value in that file binds in EVERY
+    /// environment, so a deploy that forgot to set <c>Jwt__SigningKey</c> would boot and sign tokens
+    /// with a key published in this repository. Held here it is instead a value the startup guard
+    /// REJECTS outside Development, and a missing key fails fast as it should.
+    /// </summary>
+    public const string DevelopmentPlaceholderKey = "dev-only-insecure-signing-key-change-me-0123456789abcdef";
+
     /// <summary>Token issuer.</summary>
     public string Issuer { get; init; } = "hoops-api";
 

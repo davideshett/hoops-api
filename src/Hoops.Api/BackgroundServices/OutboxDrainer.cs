@@ -72,7 +72,9 @@ public sealed class OutboxDrainer : BackgroundService
                 var competitionId = ReadCompetitionId(message.Payload);
                 if (competitionId is { } id)
                 {
-                    var result = await recompute.RecomputeCompetitionAsync(id, ct);
+                    // A system caller: the drainer has no ambient tenant, and the message was
+                    // written by an already-authorised state change.
+                    var result = await recompute.RecomputeCompetitionAsync(id, null, ct);
                     if (result.IsFailure)
                     {
                         message.MarkFailed(result.Error.Code);

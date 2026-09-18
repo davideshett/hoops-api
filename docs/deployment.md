@@ -12,7 +12,7 @@ Everything environment-specific is configuration; nothing secret is in source co
 | Setting | Where it comes from | Notes |
 |---|---|---|
 | `ConnectionStrings__Postgres` | Environment / secret store | — |
-| `Jwt__SigningKey` | **Secret store only** | ≥ 32 bytes. Startup fails fast if absent or short. |
+| `Jwt__SigningKey` | **Secret store only** | ≥ 32 bytes. Absent from `appsettings.json` by design. Startup fails fast if absent, short, or still the development placeholder. |
 | `Registry__NinPepper` | **Secret store only** | ADR-008. See §4 on rotation — it is a migration, not an operation. |
 | `Otlp__Endpoint` | Environment | Unset disables the exporter; spans are still produced. |
 | `RateLimiting__EventsPerMinute` | Environment | Default 600 per game. Deliberately generous. |

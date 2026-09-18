@@ -36,6 +36,15 @@ public interface IGameStatisticsSource
     /// <summary>Every finalised game in a competition.</summary>
     Task<IReadOnlyList<GameFacts>> ListFinalizedForCompetitionAsync(CompetitionId competitionId, CancellationToken ct = default);
 
+    /// <summary>
+    /// The organisation owning a competition, or null if it does not exist. Answered WITHOUT the
+    /// tenant filter, because the recompute path runs as a system operation with no ambient tenant —
+    /// it exists so an org-scoped caller can be checked against the real owner (see
+    /// <see cref="Contracts.IStatisticsRecomputeService"/>), and works for a competition with no
+    /// finalised games yet.
+    /// </summary>
+    Task<OrganisationId?> GetCompetitionOrganisationAsync(CompetitionId competitionId, CancellationToken ct = default);
+
     /// <summary>How many games are scheduled in a competition (the qualification denominator).</summary>
     Task<int> CountScheduledGamesAsync(CompetitionId competitionId, CancellationToken ct = default);
 

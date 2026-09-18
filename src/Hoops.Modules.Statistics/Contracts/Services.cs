@@ -7,13 +7,23 @@ namespace Hoops.Modules.Statistics.Contracts;
 /// Rebuilds derived statistics from the event log. Safe to run at any time — it is simultaneously the
 /// disaster-recovery path, the correctness audit, and the thing that makes ADR-001 real (§9.3).
 /// </summary>
+/// <remarks>
+/// Recompute reads and writes across the tenant filter by necessity — it replays a game the ambient
+/// tenant may not own (the outbox drainer has no tenant at all). <c>requiredOrganisationId</c> is
+/// therefore how an org-scoped caller proves it is entitled to the target: pass the route's
+/// organisation and a game or competition belonging to anyone else reports NOT FOUND, exactly as the
+/// query filter would. System callers pass <c>null</c>. There is no default — every caller states
+/// which it is.
+/// </remarks>
 public interface IStatisticsRecomputeService
 {
     /// <summary>Rebuilds one game's statistics, then its competition's aggregates and standings.</summary>
-    Task<Result<RecomputeSummaryDto>> RecomputeGameAsync(GameId gameId, CancellationToken ct = default);
+    Task<Result<RecomputeSummaryDto>> RecomputeGameAsync(
+        GameId gameId, OrganisationId? requiredOrganisationId, CancellationToken ct = default);
 
     /// <summary>Rebuilds an entire competition: every game, its aggregates, standings, and careers.</summary>
-    Task<Result<RecomputeSummaryDto>> RecomputeCompetitionAsync(CompetitionId competitionId, CancellationToken ct = default);
+    Task<Result<RecomputeSummaryDto>> RecomputeCompetitionAsync(
+        CompetitionId competitionId, OrganisationId? requiredOrganisationId, CancellationToken ct = default);
 
     /// <summary>Rebuilds career totals for the given players.</summary>
     Task<Result<RecomputeSummaryDto>> RecomputeCareersAsync(IReadOnlyCollection<PlayerId> playerIds, CancellationToken ct = default);

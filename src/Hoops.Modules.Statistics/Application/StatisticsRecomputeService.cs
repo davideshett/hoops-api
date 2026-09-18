@@ -32,10 +32,14 @@ public sealed class StatisticsRecomputeService : IStatisticsRecomputeService
     }
 
     /// <inheritdoc />
-    public async Task<Result<RecomputeSummaryDto>> RecomputeGameAsync(GameId gameId, CancellationToken ct = default)
+    public async Task<Result<RecomputeSummaryDto>> RecomputeGameAsync(
+        GameId gameId, OrganisationId? requiredOrganisationId, CancellationToken ct = default)
     {
         var facts = await _games.GetFactsAsync(gameId, ct);
-        if (facts is null)
+
+        // Another organisation's game is reported as absent rather than forbidden, so this endpoint
+        // cannot be used to probe which game ids exist elsewhere on the platform.
+        if (facts is null || (requiredOrganisationId is { } org && facts.OrganisationId != org))
         {
             return Error.NotFound("GAME_NOT_FOUND", "The game does not exist.");
         }
@@ -43,16 +47,29 @@ public sealed class StatisticsRecomputeService : IStatisticsRecomputeService
         var written = await RebuildGameAsync(facts, ct);
         await _unitOfWork.SaveChangesAsync(ct);
 
-        // A game's statistics feed its competition's aggregates and standings, so those follow.
-        var competition = await RecomputeCompetitionAsync(facts.CompetitionId, ct);
+        // A game's statistics feed its competition's aggregates and standings, so those follow. The
+        // competition is the game's own, and the game is already authorised, so no further check.
+        var competition = await RecomputeCompetitionAsync(facts.CompetitionId, null, ct);
         return competition.IsFailure
             ? competition.Error
             : new RecomputeSummaryDto(1, written, competition.Value.AggregatesWritten, competition.Value.StandingsRowsWritten);
     }
 
     /// <inheritdoc />
-    public async Task<Result<RecomputeSummaryDto>> RecomputeCompetitionAsync(CompetitionId competitionId, CancellationToken ct = default)
+    public async Task<Result<RecomputeSummaryDto>> RecomputeCompetitionAsync(
+        CompetitionId competitionId, OrganisationId? requiredOrganisationId, CancellationToken ct = default)
     {
+        if (requiredOrganisationId is { } org)
+        {
+            // Checked against the competition itself, not its games, so an empty competition is
+            // guarded too. Absent rather than forbidden, for the same reason as above.
+            var owner = await _games.GetCompetitionOrganisationAsync(competitionId, ct);
+            if (owner != org)
+            {
+                return Error.NotFound("COMPETITION_NOT_FOUND", "The competition does not exist.");
+            }
+        }
+
         var games = await _games.ListFinalizedForCompetitionAsync(competitionId, ct);
 
         // 0. Clear the whole competition first. Rebuilding only the games that are CURRENTLY finalised

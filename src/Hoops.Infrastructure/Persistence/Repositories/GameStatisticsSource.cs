@@ -36,6 +36,14 @@ public sealed class GameStatisticsSource(AppDbContext db, IGameProjector project
     }
 
     /// <inheritdoc />
+    public async Task<OrganisationId?> GetCompetitionOrganisationAsync(
+        CompetitionId competitionId, CancellationToken ct = default)
+        => await db.Competitions.IgnoreQueryFilters()
+            .Where(c => c.Id == competitionId)
+            .Select(c => (OrganisationId?)c.OrganisationId)
+            .FirstOrDefaultAsync(ct);
+
+    /// <inheritdoc />
     public Task<int> CountScheduledGamesAsync(CompetitionId competitionId, CancellationToken ct = default)
         => db.Games.IgnoreQueryFilters()
             .CountAsync(g => g.CompetitionId == competitionId && g.Status != GameStatus.Cancelled, ct);

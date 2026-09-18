@@ -105,6 +105,7 @@ public sealed class StatisticsController : ApiControllerBase
 
     /// <summary>Rebuilds one game's statistics from its event log, then its competition's aggregates.</summary>
     /// <response code="200">What was rebuilt.</response>
+    /// <response code="404">The game does not exist in this organisation.</response>
     [Authorize(Policy = AuthPolicies.OrgAdmin)]
     [HttpPost("admin/recompute/games/{gameId:guid}")]
     [ProducesResponseType(typeof(RecomputeSummaryDto), StatusCodes.Status200OK)]
@@ -112,19 +113,23 @@ public sealed class StatisticsController : ApiControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<RecomputeSummaryDto>> RecomputeGame(Guid orgId, Guid gameId, CancellationToken ct)
-        => Ok(await _recompute.RecomputeGameAsync(GameId.FromGuid(gameId), ct));
+        => Ok(await _recompute.RecomputeGameAsync(
+            GameId.FromGuid(gameId), OrganisationId.FromGuid(orgId), ct));
 
     /// <summary>
     /// Rebuilds an entire competition from its event logs. Safe to run at any time — it is the
     /// disaster-recovery path and the correctness audit in one (§9.3).
     /// </summary>
     /// <response code="200">What was rebuilt.</response>
+    /// <response code="404">The competition does not exist in this organisation.</response>
     [Authorize(Policy = AuthPolicies.OrgAdmin)]
     [HttpPost("admin/recompute/competitions/{competitionId:guid}")]
     [ProducesResponseType(typeof(RecomputeSummaryDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<RecomputeSummaryDto>> RecomputeCompetition(
         Guid orgId, Guid competitionId, CancellationToken ct)
-        => Ok(await _recompute.RecomputeCompetitionAsync(CompetitionId.FromGuid(competitionId), ct));
+        => Ok(await _recompute.RecomputeCompetitionAsync(
+            CompetitionId.FromGuid(competitionId), OrganisationId.FromGuid(orgId), ct));
 }

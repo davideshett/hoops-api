@@ -49,13 +49,15 @@ public sealed class HistoryReadRepository(AppDbContext db) : IHistoryReadReposit
     public async Task<IReadOnlyList<ShotRow>> ListGameShotsAsync(
         GameId gameId, CompetitionTeamId? teamId, PlayerId? playerId, CancellationToken ct = default)
     {
-        var query = ShotQuery().Where(e => e.GameId == gameId);
+        // ONE game's chart is ordinary tenant data, so it keeps the global filter: a caller probing
+        // another organisation's game id through their own route sees nothing.
+        var query = ShotQuery(db.GameEvents).Where(e => e.GameId == gameId);
         if (teamId is { } team)
         {
             query = query.Where(e => e.CompetitionTeamId == team);
         }
 
-        var rows = await ProjectShots(query, playerId).ToListAsync(ct);
+        var rows = await ProjectShots(query, db.GameRosterEntries, playerId).ToListAsync(ct);
         return Materialise(rows);
     }
 
@@ -63,16 +65,19 @@ public sealed class HistoryReadRepository(AppDbContext db) : IHistoryReadReposit
     public async Task<IReadOnlyList<ShotRow>> ListPlayerShotsAsync(
         PlayerId playerId, CompetitionId? competitionId, CancellationToken ct = default)
     {
-        var query = ShotQuery();
+        // A career chart follows the PLAYER across organisations, exactly as career aggregates do
+        // (ADR-003), so this read — and only this read — is deliberately untenanted. The roster lookup
+        // must be untenanted too, or the shots would be found and then fail to resolve to a player.
+        var query = ShotQuery(db.GameEvents.IgnoreQueryFilters());
         if (competitionId is { } competition)
         {
-            // Career charts span organisations, so the filter is the competition, not the tenant.
             var gameIds = db.Games.IgnoreQueryFilters()
                 .Where(g => g.CompetitionId == competition).Select(g => g.Id);
             query = query.Where(e => gameIds.Contains(e.GameId));
         }
 
-        var rows = await ProjectShots(query, playerId).ToListAsync(ct);
+        var rows = await ProjectShots(query, db.GameRosterEntries.IgnoreQueryFilters(), playerId)
+            .ToListAsync(ct);
         return Materialise(rows);
     }
 
@@ -80,11 +85,12 @@ public sealed class HistoryReadRepository(AppDbContext db) : IHistoryReadReposit
     public async Task<IReadOnlyList<(CompetitionTeamId TeamId, IReadOnlyList<PlayerId> Players, int Seconds, int For, int Against)>>
         ListLineupsAsync(GameId gameId, CancellationToken ct = default)
     {
-        var stints = await db.LineupStints.IgnoreQueryFilters()
+        // One game's lineups are ordinary tenant data, so the global filter stays on.
+        var stints = await db.LineupStints
             .Where(s => s.GameId == gameId).ToListAsync(ct);
 
         // Stints store the lineup as comma-joined game-roster ids; resolve them to registry players.
-        var roster = await db.GameRosterEntries.IgnoreQueryFilters()
+        var roster = await db.GameRosterEntries
             .Where(r => r.GameId == gameId)
             .ToDictionaryAsync(r => r.Id.Value, r => r.PlayerId, ct);
 
@@ -111,16 +117,31 @@ public sealed class HistoryReadRepository(AppDbContext db) : IHistoryReadReposit
         => await db.CompetitionPlayerAggregates.IgnoreQueryFilters()
             .Where(a => a.PlayerId == playerId).ToListAsync(ct);
 
-    private IQueryable<GameEvent> ShotQuery()
-        => db.GameEvents.IgnoreQueryFilters()
-            .Where(e => !e.IsVoided && ShotTypes.Contains(e.EventType)
-                && e.ShotXCm != null && e.ShotYCm != null);
+    // The caller supplies the source so it, not this helper, decides whether the tenant filter applies.
+    private static IQueryable<GameEvent> ShotQuery(IQueryable<GameEvent> source)
+        => source.Where(e => !e.IsVoided && ShotTypes.Contains(e.EventType)
+            && e.ShotXCm != null && e.ShotYCm != null);
 
-    private IQueryable<ShotProjection> ProjectShots(IQueryable<GameEvent> query, PlayerId? playerId)
+    // Events address players by their frozen game-roster row, so the roster source travels with the
+    // event source: each caller scopes BOTH the same way, and a tenanted chart cannot end up reading
+    // untenanted rosters (or the reverse) by accident.
+    private static IQueryable<ShotProjection> ProjectShots(
+        IQueryable<GameEvent> query, IQueryable<GameRosterEntry> roster, PlayerId? playerId)
     {
-        var projected = query.Select(e => new ShotProjection(
+        if (playerId is { } id)
+        {
+            // Filtered on the EVENT, before projecting. Filtering the projection instead reads more
+            // naturally but does not translate: PlayerId is itself a subquery, and EF cannot push a
+            // predicate back through it — it throws at translation time rather than falling back.
+            query = query.Where(e => roster
+                .Where(r => r.Id == e.GameRosterEntryId)
+                .Select(r => (PlayerId?)r.PlayerId)
+                .FirstOrDefault() == id);
+        }
+
+        return query.Select(e => new ShotProjection(
             e.GameId,
-            db.GameRosterEntries.Where(r => r.Id == e.GameRosterEntryId)
+            roster.Where(r => r.Id == e.GameRosterEntryId)
                 .Select(r => (PlayerId?)r.PlayerId).FirstOrDefault(),
             e.CompetitionTeamId,
             e.EventType == EventTypes.FieldGoalMade,
@@ -131,8 +152,6 @@ public sealed class HistoryReadRepository(AppDbContext db) : IHistoryReadReposit
             e.ShotDistanceCm,
             e.Period,
             e.GameClockMs));
-
-        return playerId is { } id ? projected.Where(s => s.PlayerId == id) : projected;
     }
 
     private static IReadOnlyList<ShotRow> Materialise(IEnumerable<ShotProjection> rows)
