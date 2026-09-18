@@ -14,4 +14,7 @@
     <Project Path="tests/Hoops.IntegrationTests/Hoops.IntegrationTests.csproj" />
     <Project Path="tests/Hoops.UnitTests/Hoops.UnitTests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Hoops.Seeder/Hoops.Seeder.csproj" />
+  </Folder>
 </Solution>

@@ -176,6 +176,9 @@ public sealed class AppDbContext : DbContext, IUnitOfWork, CompetitionsUnitOfWor
             var converterType = typeof(StronglyTypedIdValueConverter<>).MakeGenericType(idType);
             configurationBuilder.Properties(idType).HaveConversion(converterType);
         }
+
+        // Every timestamp is stored in UTC (CLAUDE.md). Callers send whatever offset their clock has.
+        configurationBuilder.Properties<DateTimeOffset>().HaveConversion<UtcDateTimeOffsetConverter>();
     }
 
     /// <inheritdoc />

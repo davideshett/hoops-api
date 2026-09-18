@@ -84,7 +84,11 @@ builder.Services.AddSingleton(sp =>
 
 // ── MVC + JSON + validation ────────────────────────────────────────────────
 builder.Services.AddControllers()
-    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new StronglyTypedIdJsonConverterFactory()));
+    .AddJsonOptions(o =>
+    {
+        o.JsonSerializerOptions.Converters.Add(new StronglyTypedIdJsonConverterFactory());
+        o.JsonSerializerOptions.Converters.Add(new UtcDateTimeOffsetJsonConverter());
+    });
 
 builder.Services.Configure<ApiBehaviorOptions>(options =>
     options.InvalidModelStateResponseFactory = context =>

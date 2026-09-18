@@ -30,6 +30,25 @@ public sealed class FixtureGenerationTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Fixtures_scheduled_with_a_Lagos_offset_are_stored_as_the_same_instant_in_UTC()
+    {
+        // A Nigerian client sends +01:00 as a matter of course. Postgres timestamptz only accepts UTC
+        // from Npgsql, so the persistence layer must normalise — this was a 500 before it did.
+        var ctx = await SetUpCompetitionWithTeamsAsync(2);
+        var lagosKickOff = new DateTimeOffset(2025, 11, 1, 16, 0, 0, TimeSpan.FromHours(1));
+
+        var generated = await ctx.Client.PostAsJsonAsync(GenerateUrl(ctx, "round-robin"),
+            new { doubleRound = false, firstGameAt = lagosKickOff });
+        generated.StatusCode.Should().Be(HttpStatusCode.OK, await generated.Content.ReadAsStringAsync());
+
+        var game = (await ReadJson(generated)).EnumerateArray().Single();
+        var stored = game.GetProperty("scheduledAt").GetDateTimeOffset();
+
+        stored.Should().Be(lagosKickOff, "the instant is unchanged");
+        stored.Offset.Should().Be(TimeSpan.Zero, "but it is represented in UTC");
+    }
+
+    [Fact]
     public async Task Double_round_robin_produces_56_with_home_and_away_alternated()
     {
         var ctx = await SetUpCompetitionWithTeamsAsync(8);
