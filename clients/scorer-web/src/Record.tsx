@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ApiError, get, post } from './api';
-import { formatClock, parseClock, uuidv7 } from './clock';
+import { uuidv7 } from './clock';
 import { Court } from './Court';
 import { CsvImport } from './CsvImport';
 import { SubmitQueue, fetchState, type Outcome } from './queue';
@@ -13,11 +13,16 @@ interface Props { orgId: string; role: string; game: Game; onBack: () => void }
 const CAN_FINALISE = new Set(['Owner', 'Admin', 'CompetitionManager']);
 
 type Pending =
-  | { kind: 'shot'; made: boolean; three: boolean; x?: number; y?: number }
+  | { kind: 'shot'; made: boolean; three: boolean; x?: number; y?: number; blocker?: string }
   | { kind: 'ft'; made: boolean }
   | { kind: 'turnover' }
   | { kind: 'foul' }
-  | { kind: 'sub' };
+  | { kind: 'sub' }
+  | { kind: 'steal' }   // defender selected first: who lost the ball?
+  | { kind: 'block' };  // defender selected first: who took the shot?
+
+/** Q1–Q4, then overtime. The API calls them periods; the table calls them quarters. */
+const quarterLabel = (p: number, regulation: number) => (p <= regulation ? `Q${p}` : `OT${p - regulation}`);
 
 const TURNOVERS = ['LostBall', 'BadPass', 'Travelling', 'DoubleDribble', 'OffensiveFoul', 'ShotClockViolation', 'OutOfBounds', 'BackCourt', 'Other'];
 const FOULS = ['Personal', 'Shooting', 'Offensive', 'Technical', 'Unsportsmanlike', 'Disqualifying'];
@@ -27,7 +32,6 @@ export function Record({ orgId, role, game, onBack }: Props) {
   const [roster, setRoster] = useState<GameRosterEntry[]>([]);
   const [live, setLive] = useState<LiveState | null>(null);
   const [period, setPeriod] = useState(1);
-  const [clockText, setClockText] = useState('10:00');
   const [actor, setActor] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
   const [subtype, setSubtype] = useState('');
@@ -49,14 +53,12 @@ export function Record({ orgId, role, game, onBack }: Props) {
       const [s, r, state] = await Promise.all([get<GameSetup>(`${url}/setup`), get<GameRosterEntry[]>(`${url}/roster`), fetchState(orgId, game.id)]);
       setSetup(s); setRoster(r); setLive(state);
       setPeriod(Math.max(1, state.currentPeriod));
-      setClockText(formatClock(state.gameStarted ? state.gameClockMs : s.ruleSet.periodDurationSeconds * 1000));
       queue.current = new SubmitQueue(orgId, game.id, state.lastSequence, (outcome) => {
         setFeed((f) => [outcome, ...f].slice(0, 12));
         if (outcome.kind === 'accepted') {
           setLive(outcome.result.state); setOffline(false);
-          // The typed field follows the log, so a CSV import or a replay leaves it where the game is.
+          // The quarter follows the log, so a CSV import or a replay leaves it where the game is.
           setPeriod(Math.max(1, outcome.result.state.currentPeriod));
-          if (!outcome.result.state.periodEnded) setClockText(formatClock(outcome.result.state.gameClockMs));
         }
         if (outcome.kind === 'rejected') setRejected(outcome);
         if (outcome.kind === 'offline') setOffline(true);
@@ -71,31 +73,32 @@ export function Record({ orgId, role, game, onBack }: Props) {
   const onCourt = (id: string) => live?.onCourt[teamOf(id) ?? '']?.includes(id) ?? false;
   const label = (id: string | null | undefined) => id && byId.get(id) ? `#${byId.get(id)!.jerseyNumber} ${byId.get(id)!.fullName.split(' ').pop()}` : '—';
 
-  function clockMs(): number | null {
-    const ms = parseClock(clockText);
-    if (ms === null) setError('Clock must be mm:ss');
-    return ms;
+  /**
+   * The game clock is NOT tracked in this app. Every event carries the quarter's full length as its
+   * clock reading (the API requires one; a reading that never moves is valid), and the quarter end
+   * carries 0. Consequence: minutes played, plus/minus and lineup durations are 0 for games recorded
+   * here. Everything else — scoring, shooting, rebounds, assists, steals, blocks, fouls, standings —
+   * is unaffected.
+   */
+  function quarterLengthMs(p: number): number {
+    const rules = setup!.ruleSet;
+    return (p > rules.numberOfPeriods ? rules.overtimeDurationSeconds : rules.periodDurationSeconds) * 1000;
   }
 
   function submit(partial: Omit<SubmitEvent, 'eventId' | 'period' | 'gameClockMs' | 'clientRecordedAt'>) {
-    const ms = clockMs(); if (ms === null) return;
-    queue.current?.enqueue({ ...partial, eventId: uuidv7(), period, gameClockMs: ms, clientRecordedAt: new Date().toISOString() });
+    queue.current?.enqueue({ ...partial, eventId: uuidv7(), period, gameClockMs: quarterLengthMs(period), clientRecordedAt: new Date().toISOString() });
     setPending(null); setActor(null); setError(null);
   }
 
   // ── flow events ─────────────────────────────────────────────────────────
-  function periodStart() {
-    const isOt = period > (setup?.ruleSet.numberOfPeriods ?? 4);
-    const full = (isOt ? setup!.ruleSet.overtimeDurationSeconds : setup!.ruleSet.periodDurationSeconds) * 1000;
-    setClockText(formatClock(full));
-    queue.current?.enqueue({ eventId: uuidv7(), eventType: 'PERIOD_START', eventSubtype: isOt ? 'Overtime' : 'Regulation', period, gameClockMs: full, clientRecordedAt: new Date().toISOString() });
+  function quarterStart() {
+    const isOt = period > setup!.ruleSet.numberOfPeriods;
+    queue.current?.enqueue({ eventId: uuidv7(), eventType: 'PERIOD_START', eventSubtype: isOt ? 'Overtime' : 'Regulation', period, gameClockMs: quarterLengthMs(period), clientRecordedAt: new Date().toISOString() });
   }
-  function periodEnd() {
-    setClockText('0:00');
+  function quarterEnd() {
     queue.current?.enqueue({ eventId: uuidv7(), eventType: 'PERIOD_END', period, gameClockMs: 0, clientRecordedAt: new Date().toISOString() });
     setPeriod((p) => p + 1);
   }
-  const clock = (type: 'CLOCK_START' | 'CLOCK_STOP') => submit({ eventType: type });
   const timeout = (teamId: string) => submit({ eventType: 'TIMEOUT', competitionTeamId: teamId, payload: { timeoutType: 'Team' } });
   const teamRebound = (teamId: string, sub: 'Offensive' | 'Defensive') => submit({ eventType: 'TEAM_REBOUND', eventSubtype: sub, competitionTeamId: teamId });
 
@@ -115,8 +118,28 @@ export function Record({ orgId, role, game, onBack }: Props) {
     if (!actor || !pending || pending.kind !== 'shot' || pending.x === undefined) return;
     submit({
       eventType: pending.made ? 'FIELD_GOAL_MADE' : 'FIELD_GOAL_MISSED', eventSubtype: pending.three ? 'ThreePoint' : 'TwoPoint',
-      competitionTeamId: teamOf(actor), gameRosterEntryId: actor, secondaryRosterEntryId: secondary, shotXCm: pending.x, shotYCm: pending.y,
+      competitionTeamId: teamOf(actor), gameRosterEntryId: actor, secondaryRosterEntryId: secondary ?? pending.blocker ?? null,
+      shotXCm: pending.x, shotYCm: pending.y,
     });
+  }
+
+  function finishShotWith(p: Extract<Pending, { kind: 'shot' }>) {
+    if (!actor || p.x === undefined) return;
+    submit({
+      eventType: 'FIELD_GOAL_MISSED', eventSubtype: p.three ? 'ThreePoint' : 'TwoPoint',
+      competitionTeamId: teamOf(actor), gameRosterEntryId: actor, secondaryRosterEntryId: p.blocker ?? null, shotXCm: p.x, shotYCm: p.y,
+    });
+  }
+
+  /** Block, defender first: the block is the secondary actor on the shooter's MISSED shot (ADR-002). */
+  function blockBy(defender: string, shooter: string, three: boolean) {
+    setActor(shooter);
+    setPending({ kind: 'shot', made: false, three, blocker: defender });
+  }
+
+  /** Steal, defender first: the steal is the secondary actor on the victim's TURNOVER (ADR-002). */
+  function stealBy(defender: string, victim: string) {
+    submit({ eventType: 'TURNOVER', eventSubtype: 'Steal', competitionTeamId: teamOf(victim), gameRosterEntryId: victim, secondaryRosterEntryId: defender });
   }
 
   function freeThrow(made: boolean) {
@@ -149,6 +172,9 @@ export function Record({ orgId, role, game, onBack }: Props) {
   /** A tap on a player while an action is waiting for its second participant. */
   function tapPlayer(id: string) {
     if (!pending) { setActor(id === actor ? null : id); return; }
+    if (pending.kind === 'steal' && actor) return stealBy(actor, id);
+    if (pending.kind === 'block' && actor) return blockBy(actor, id, subtype === 'ThreePoint');
+    if (pending.kind === 'shot' && pending.x !== undefined && pending.blocker) return; // location comes from the court, no second tap
     if (pending.kind === 'shot' && pending.x !== undefined) return finishShot(id);
     if (pending.kind === 'turnover') return finishTurnover(id);
     if (pending.kind === 'foul') return finishFoul(id);
@@ -158,11 +184,13 @@ export function Record({ orgId, role, game, onBack }: Props) {
   if (!setup || !live || !home || !away) return <div className="page">{error ?? 'Loading game…'}</div>;
 
   const prompt = !pending ? null
-    : pending.kind === 'shot' && pending.x === undefined ? 'Tap where the shot was taken'
-    : pending.kind === 'shot' ? (pending.made ? 'Tap the assister, or No assist' : 'Tap the blocker, or None')
-    : pending.kind === 'turnover' ? 'Tap the stealer, or None'
-    : pending.kind === 'foul' ? 'Tap the player fouled, or None'
-    : pending.kind === 'sub' ? `${label(actor)} out — tap who comes in` : null;
+    : pending.kind === 'shot' && pending.x === undefined ? (pending.blocker ? `${label(pending.blocker)} blocked ${label(actor)} — tap where the shot was taken` : 'Tap where the shot was taken')
+    : pending.kind === 'shot' ? (pending.made ? 'Assisted by — tap the teammate, or No assist' : 'Blocked by — tap the defender, or None')
+    : pending.kind === 'turnover' ? 'Stolen by — tap the defender, or None'
+    : pending.kind === 'foul' ? 'Fouled — tap the player fouled, or None'
+    : pending.kind === 'sub' ? `${label(actor)} out — tap who comes in`
+    : pending.kind === 'steal' ? `${label(actor)} stole it — tap who lost the ball`
+    : pending.kind === 'block' ? `${label(actor)} blocked it — tap the shooter` : null;
 
   const fouledOut = (id: string) => false && id; // per-player fouls are not in LiveState; the server enforces the limit.
 
@@ -194,11 +222,9 @@ export function Record({ orgId, role, game, onBack }: Props) {
       <header className="bar">
         <button onClick={onBack}>← Games</button>
         <div className="clock">
-          <label>Period <input type="number" min={1} max={9} value={period} onChange={(e) => setPeriod(Number(e.target.value))} /></label>
-          <label>Clock <input className="clock-input" value={clockText} onChange={(e) => setClockText(e.target.value)} placeholder="mm:ss" /></label>
-          <button onClick={() => { const ms = parseClock(clockText); if (ms !== null) setClockText(formatClock(Math.max(0, ms - 10_000))); }}>−10s</button>
-          <button onClick={() => { const ms = parseClock(clockText); if (ms !== null) setClockText(formatClock(Math.max(0, ms - 1_000))); }}>−1s</button>
-          <span className={`pill ${live.clockRunning ? 'running' : ''}`}>{live.clockRunning ? 'clock running' : 'clock stopped'}</span>
+          <span className="quarter">{quarterLabel(period, setup.ruleSet.numberOfPeriods)}</span>
+          <button onClick={() => setPeriod((p) => Math.max(1, p - 1))} title="Previous quarter">‹</button>
+          <button onClick={() => setPeriod((p) => p + 1)} title="Next quarter">›</button>
         </div>
         <div className="status">
           <span className="muted">seq {live.lastSequence}</span>
@@ -209,10 +235,8 @@ export function Record({ orgId, role, game, onBack }: Props) {
 
       <div className="flow">
         {!live.gameStarted && <button className="primary" onClick={() => control('start')}>Start game</button>}
-        <button onClick={periodStart}>Period start</button>
-        <button onClick={() => clock('CLOCK_START')} disabled={live.clockRunning}>Clock start</button>
-        <button onClick={() => clock('CLOCK_STOP')} disabled={!live.clockRunning}>Clock stop</button>
-        <button onClick={periodEnd}>Period end</button>
+        <button onClick={quarterStart}>Start {quarterLabel(period, setup.ruleSet.numberOfPeriods)}</button>
+        <button onClick={quarterEnd}>End {quarterLabel(period, setup.ruleSet.numberOfPeriods)}</button>
         <button className="danger" onClick={() => control('undo')}>Undo last</button>
         {live.gameStarted && !live.gameEnded && <button className="primary" onClick={() => control('end')}>End game</button>}
         {live.gameEnded && (CAN_FINALISE.has(role)
@@ -232,7 +256,9 @@ export function Record({ orgId, role, game, onBack }: Props) {
           </div>}
 
           {pending?.kind === 'shot' && pending.x === undefined
-            ? <Court onTap={(x, y) => setPending({ ...pending, x, y })} />
+            ? <Court onTap={(x, y) => pending.blocker
+                ? (() => { const p = { ...pending, x, y }; setPending(p); queueMicrotask(() => finishShotWith(p)); })()
+                : setPending({ ...pending, x, y })} />
             : (
               <>
                 <div className="selected">{actor ? <>Selected: <b>{label(actor)}</b> {onCourt(actor) ? '' : '(bench)'}</> : 'Tap a player, then an action'}</div>
@@ -248,6 +274,8 @@ export function Record({ orgId, role, game, onBack }: Props) {
                   <button disabled={!actor} onClick={() => { setSubtype('LostBall'); setPending({ kind: 'turnover' }); }}>Turnover</button>
                   <button disabled={!actor} onClick={() => { setSubtype('Personal'); setPending({ kind: 'foul' }); }}>Foul</button>
                   <button disabled={!actor} onClick={() => setPending({ kind: 'sub' })}>Sub out</button>
+                  <button className="defence" disabled={!actor} onClick={() => setPending({ kind: 'steal' })}>Steal</button>
+                  <button className="defence" disabled={!actor} onClick={() => { setSubtype('TwoPoint'); setPending({ kind: 'block' }); }}>Block</button>
                 </div>
                 <div className="row small">
                   <label>FT sequence
@@ -255,6 +283,7 @@ export function Record({ orgId, role, game, onBack }: Props) {
                       {['1/1', '1/2', '2/2', '1/3', '2/3', '3/3'].map((v) => <option key={v}>{v}</option>)}
                     </select>
                   </label>
+                  {pending?.kind === 'block' && <label>Shot <select value={subtype} onChange={(e) => setSubtype(e.target.value)}><option>TwoPoint</option><option>ThreePoint</option></select></label>}
                   {pending?.kind === 'turnover' && <label>Type <select value={subtype} onChange={(e) => setSubtype(e.target.value)}>{TURNOVERS.map((t) => <option key={t}>{t}</option>)}</select></label>}
                   {pending?.kind === 'foul' && <>
                     <label>Type <select value={subtype} onChange={(e) => setSubtype(e.target.value)}>{FOULS.map((t) => <option key={t}>{t}</option>)}</select></label>
@@ -300,7 +329,7 @@ export function Record({ orgId, role, game, onBack }: Props) {
         </div>
       )}
 
-      {showCsv && <CsvImport roster={roster} home={home} away={away} onSubmit={(events) => { events.forEach((e) => queue.current?.enqueue(e)); setShowCsv(false); }} onClose={() => setShowCsv(false)} />}
+      {showCsv && <CsvImport roster={roster} home={home} away={away} quarterLengthMs={quarterLengthMs} onSubmit={(events) => { events.forEach((e) => queue.current?.enqueue(e)); setShowCsv(false); }} onClose={() => setShowCsv(false)} />}
     </div>
   );
 }

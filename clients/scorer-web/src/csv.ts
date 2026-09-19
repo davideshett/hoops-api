@@ -4,11 +4,13 @@ import type { GameRosterEntry, SubmitEvent } from './types';
 /**
  * CSV import — recording after the game from a sheet. One row per event:
  *
- *   period,clock,type,subtype,team,jersey,secondary,x,y,payload
- *   1,10:00,PERIOD_START,Regulation,,,,,,
- *   1,9:42,FIELD_GOAL_MADE,TwoPoint,H,7,11,1100,-60,
- *   1,9:20,FOUL,Shooting,A,5,7,,,freeThrowsAwarded=2
- *   1,9:20,FREE_THROW_MADE,,H,7,,,,attemptNumber=1;totalAttempts=2
+ *   quarter,clock,type,subtype,team,jersey,secondary,x,y,payload
+ *   1,,PERIOD_START,Regulation,,,,,,
+ *   1,,FIELD_GOAL_MADE,TwoPoint,H,7,11,1100,-60,
+ *   1,,FOUL,Shooting,A,5,7,,,freeThrowsAwarded=2
+ *   1,,FREE_THROW_MADE,,H,7,,,,attemptNumber=1;totalAttempts=2
+ *
+ * clock is optional (blank = not tracked); fill it in as mm:ss if you have it.
  *
  * team is H or A (or a team's short name); jersey/secondary resolve through the game roster;
  * payload is key=value pairs separated by ';'. Column order is fixed; a header row is optional.
@@ -28,19 +30,21 @@ export function indexRoster(entries: GameRosterEntry[], home: { id: string; shor
   return { home, away, byTeamAndJersey };
 }
 
-export function parseCsv(text: string, roster: RosterIndex): CsvRow[] {
+export function parseCsv(text: string, roster: RosterIndex, quarterLengthMs: (quarter: number) => number): CsvRow[] {
   const rows: CsvRow[] = [];
   const lines = text.split(/\r?\n/);
   lines.forEach((raw, i) => {
     const line = i + 1;
-    if (!raw.trim() || /^period\s*,/i.test(raw)) return;
+    if (!raw.trim() || /^(period|quarter)\s*,/i.test(raw)) return;
     const cols = raw.split(',').map((c) => c.trim());
     const [periodText, clockText, type, subtype, teamText, jersey, secondary, x, y, payloadText] = cols;
 
     const period = Number(periodText);
-    const clock = parseClock(clockText ?? '');
-    if (!Number.isInteger(period) || period < 1) return rows.push({ line, raw, error: `bad period '${periodText}'` });
-    if (clock === null) return rows.push({ line, raw, error: `bad clock '${clockText}' (mm:ss)` });
+    // The clock column is optional: blank means "not tracked" and the app fills in the quarter's
+    // full length (0 for a PERIOD_END), exactly as the tap UI does.
+    const clock = clockText ? parseClock(clockText) : null;
+    if (!Number.isInteger(period) || period < 1) return rows.push({ line, raw, error: `bad quarter '${periodText}'` });
+    if (clockText && clock === null) return rows.push({ line, raw, error: `bad clock '${clockText}' (mm:ss or blank)` });
     if (!type) return rows.push({ line, raw, error: 'missing event type' });
 
     const team = resolveTeam(teamText, roster);
@@ -74,7 +78,7 @@ export function parseCsv(text: string, roster: RosterIndex): CsvRow[] {
         eventType: type.toUpperCase(),
         eventSubtype: subtype || null,
         period,
-        gameClockMs: clock,
+        gameClockMs: clock ?? (type.toUpperCase() === 'PERIOD_END' ? 0 : quarterLengthMs(period)),
         competitionTeamId: team?.id ?? null,
         gameRosterEntryId: actor?.id ?? null,
         secondaryRosterEntryId: secondaryEntry?.id ?? null,

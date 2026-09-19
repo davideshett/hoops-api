@@ -13,9 +13,12 @@ games and 25 unplayed fixtures, and logins — see `tools/Hoops.Seeder/README.md
 
 ## 1. Three facts that shape the app
 
-**The app owns the clock.** The server never runs one. Every event carries `period` and
-`gameClockMs` — milliseconds **remaining** in the period — and the server validates they move the
-right way. This is deliberate: a scorer's table must work with no connection at all.
+**The app owns the clock — or chooses not to track it.** The server never runs one. Every event
+carries `period` and `gameClockMs` (milliseconds **remaining**), and the server only checks that the
+reading never goes *up* within a period and that a period ends at 0. A client that does not track
+time sends the period's full length on every play and 0 on `PERIOD_END`; that is a valid log. The
+cost is that minutes played, plus/minus and lineup durations derive from clock spans and will be 0.
+Everything else is unaffected. The reference scorer app (`clients/scorer-web`) works this way.
 
 **Events are the only thing you write.** You never send a score, a foul count, or a statline. You
 send *what happened*; every number is derived server-side and comes back in `state` on each

@@ -16,16 +16,24 @@ Point it elsewhere with `VITE_API_URL`.
 
 ## How it works
 
-- **The clock is a field you type, not a timer.** Period and `mm:ss` carry over between events;
-  edit them when the reading changes (−10s / −1s nudges for video). After every accepted event the
-  field snaps to the server's clock, so a CSV import or a reload leaves it where the game actually is.
+- **There is no clock.** You record what happened in each quarter, in order — nothing more. The
+  API requires a clock reading on every event, so the app sends the quarter's full length for every
+  play and 0:00 for the quarter end; a reading that never moves is a valid log. **What this costs:**
+  minutes played, plus/minus and lineup durations are 0 for games recorded here. Scoring, shooting,
+  rebounds, assists, steals, blocks, fouls, standings and leaderboards are unaffected. If you have
+  clock readings (from a video, say) the CSV import's optional `clock` column takes them.
+- **Quarters.** Q1–Q4, then OT1, OT2… The API calls them periods.
 - **Tap a player, then an action.** Shots ask for a court location, then the assister (made) or
   blocker (missed). Fouls ask for the type, free throws awarded, and who was fouled — then the fouled
   player is pre-selected with the free-throw sequence ready. Subs: tap the player out, then in.
+- **Steals and blocks** are attributes of another event, not events (ADR-002): a steal is the second
+  player on a turnover, a block the second player on a missed shot. Record them either way round —
+  from the victim (Turnover → tap the stealer; 2PT ✗ → tap the blocker) or from the defender
+  (select the defender → **Steal** → tap who lost it; **Block** → tap the shooter → tap the court).
 - **Every event goes through one queue**, persisted in `localStorage`, sent one at a time with the
   last known sequence. A lost response is retried safely (client-generated UUID v7 ids). A rejection
   pauses the queue: tier-1 shows the message; tier-2 offers *Override and record* with a reason.
-- **Import CSV** takes a sheet of events (`period,clock,type,subtype,team,jersey,secondary,x,y,payload`)
+- **Import CSV** takes a sheet of events (`quarter,clock,type,subtype,team,jersey,secondary,x,y,payload`, clock optional)
   and feeds it through the same queue, so validation and overrides apply exactly as for taps.
   Jerseys resolve through the game roster; team is `H`/`A` or a short name.
 - **Roles.** A statistician can set up, lock, record and end a game. Finalising is a competition
