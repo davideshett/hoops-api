@@ -39,6 +39,9 @@ jobs:
       - name: Install EF tools
         run: dotnet tool install --global dotnet-ef --version 10.0.11
 
+      - name: Restore
+        run: dotnet restore BasketballStats.slnx
+
       # Fails if the model has drifted from the migrations — i.e. someone changed an entity
       # without adding a migration. Cheaper to catch here than on a deploy.
       - name: Verify no pending model changes

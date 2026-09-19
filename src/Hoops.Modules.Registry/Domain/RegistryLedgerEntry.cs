@@ -58,10 +58,20 @@ public sealed class RegistryLedgerEntry
     public static RegistryLedgerEntry Append(
         byte[] previousHash, LedgerEntryType entryType, PlayerId? playerId, DateTimeOffset occurredAt)
     {
+        // Hash exactly what the database will hold. timestamptz keeps microseconds; .NET ticks are
+        // 100 ns. Hashing the untruncated value means the round trip changes the input and every
+        // verify fails — invisibly on macOS, whose clock has no sub-microsecond ticks, and on every
+        // Linux host, which does.
+        occurredAt = TruncateToMicroseconds(occurredAt);
+
         var payloadHash = ComputePayloadHash(entryType, playerId);
         var entryHash = ComputeEntryHash(previousHash, payloadHash, occurredAt);
         return new RegistryLedgerEntry(entryType, playerId, payloadHash, previousHash, entryHash, occurredAt);
     }
+
+    /// <summary>The precision the store keeps, so what is hashed is what is read back.</summary>
+    public static DateTimeOffset TruncateToMicroseconds(DateTimeOffset value)
+        => new(value.Ticks - (value.Ticks % 10), value.Offset);
 
     /// <summary>SHA-256 of the canonical payload: entry type and player id only.</summary>
     public static byte[] ComputePayloadHash(LedgerEntryType entryType, PlayerId? playerId)
