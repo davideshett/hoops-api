@@ -107,8 +107,15 @@ public sealed class RegistryAuditRepository(AppDbContext db) : IRegistryAuditRep
 public sealed class RegistryLedgerRepository(AppDbContext db) : IRegistryLedgerRepository
 {
     /// <inheritdoc />
-    public Task<RegistryLedgerEntry?> GetLastAsync(CancellationToken ct = default)
-        => db.RegistryLedger.OrderByDescending(e => e.Sequence).FirstOrDefaultAsync(ct);
+    public async Task<RegistryLedgerEntry?> GetLastAsync(CancellationToken ct = default)
+    {
+        // Appending is read-the-tip-then-write, so two appenders that read the same tip fork the
+        // chain, and every verify from then on reports tampering that never happened. Serialise them:
+        // an advisory lock held for the rest of this unit of work, released when it commits. The
+        // context commits the transaction it started here in SaveChangesAsync.
+        await db.BeginLedgerAppendAsync(ct);
+        return await db.RegistryLedger.OrderByDescending(e => e.Sequence).FirstOrDefaultAsync(ct);
+    }
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<RegistryLedgerEntry>> ListAllAsync(CancellationToken ct = default)

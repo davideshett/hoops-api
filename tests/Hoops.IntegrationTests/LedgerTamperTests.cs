@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Json;
 using System.Text.Json;
 using FluentAssertions;
 using Hoops.Modules.Registry.Domain;
@@ -52,11 +53,45 @@ public sealed class LedgerTamperTests : IntegrationTestBase
         });
 
         // Verify now reports the exact divergence point.
-        var verify = await admin.GetAsync("/api/v1/registry/ledger/verify");
-        verify.StatusCode.Should().Be(HttpStatusCode.OK);
-        var result = await ReadJson(verify);
-        result.GetProperty("isValid").GetBoolean().Should().BeFalse();
-        result.GetProperty("divergenceSequence").GetInt64().Should().Be(tamperedSequence);
+        try
+        {
+            var verify = await admin.GetAsync("/api/v1/registry/ledger/verify");
+            verify.StatusCode.Should().Be(HttpStatusCode.OK);
+            var result = await ReadJson(verify);
+            result.GetProperty("isValid").GetBoolean().Should().BeFalse();
+            result.GetProperty("divergenceSequence").GetInt64().Should().Be(tamperedSequence);
+        }
+        finally
+        {
+            // The ledger is shared with every other test in the collection: put it back.
+            await WithDbAsync(async db =>
+            {
+                var entry = await db.RegistryLedger.FirstAsync(e => e.Sequence == tamperedSequence);
+                db.Entry(entry).Property(e => e.OccurredAt).CurrentValue = entry.OccurredAt.AddSeconds(-9999);
+                await db.SaveChangesAsync();
+            });
+        }
+    }
+
+    [Fact]
+    public async Task Concurrent_registrations_do_not_fork_the_chain()
+    {
+        // Two appenders that read the same tip would both hash against it and fork the chain, after
+        // which every verify reports tampering that never happened. First seen when the 8-court load
+        // test registered 80 players at once. Appends are serialised with an advisory lock.
+        var (token, orgId) = await NewOrgWithOwnerAsync();
+        var client = AuthenticatedClient(token);
+        var admin = AuthenticatedClient(await NewPlatformAdminTokenAsync());
+
+        var registrations = Enumerable.Range(0, 20).Select(i => client.PostAsJsonAsync(
+            $"/api/v1/organisations/{orgId}/registry/players",
+            new { firstName = $"Concurrent{i}", lastName = "Appender", dateOfBirth = "2000-01-01", gender = "Male" }));
+        var responses = await Task.WhenAll(registrations);
+        responses.Should().OnlyContain(r => r.StatusCode == HttpStatusCode.Created);
+
+        var result = await ReadJson(await admin.GetAsync("/api/v1/registry/ledger/verify"));
+        result.GetProperty("isValid").GetBoolean().Should().BeTrue(
+            "twenty simultaneous appends must produce one chain, not a fork");
     }
 
     private static async Task<JsonElement> ReadJson(HttpResponseMessage response)

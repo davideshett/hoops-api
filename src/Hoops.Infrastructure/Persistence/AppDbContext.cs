@@ -204,10 +204,38 @@ public sealed class AppDbContext : DbContext, IUnitOfWork, CompetitionsUnitOfWor
     }
 
     /// <inheritdoc />
-    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         StampAudits();
-        return base.SaveChangesAsync(cancellationToken);
+        var written = await base.SaveChangesAsync(cancellationToken);
+
+        // Commit a transaction this context opened to serialise a ledger append. A transaction the
+        // caller opened is theirs to commit.
+        if (_ledgerTransaction is { } transaction)
+        {
+            _ledgerTransaction = null;
+            await transaction.CommitAsync(cancellationToken);
+            await transaction.DisposeAsync();
+        }
+
+        return written;
+    }
+
+    private Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? _ledgerTransaction;
+
+    /// <summary>
+    /// Serialises registry-ledger appends. Takes a transaction-scoped advisory lock — one key for the
+    /// whole ledger, because the chain is platform-wide — so concurrent appenders queue rather than
+    /// both hashing against the same tip. Released when the unit of work commits.
+    /// </summary>
+    public async Task BeginLedgerAppendAsync(CancellationToken ct)
+    {
+        if (Database.CurrentTransaction is null)
+        {
+            _ledgerTransaction = await Database.BeginTransactionAsync(ct);
+        }
+
+        await Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(7264001)", ct);
     }
 
     private void SetTenantFilter<TEntity>(ModelBuilder builder)
