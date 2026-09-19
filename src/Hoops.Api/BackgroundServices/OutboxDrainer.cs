@@ -56,17 +56,27 @@ public sealed class OutboxDrainer : BackgroundService
     /// <summary>Processes one batch. Exposed so tests can drain deterministically instead of waiting.</summary>
     public async Task<int> DrainOnceAsync(CancellationToken ct)
     {
-        using var scope = _scopeFactory.CreateScope();
-        var outbox = scope.ServiceProvider.GetRequiredService<IOutboxRepository>();
-        var recompute = scope.ServiceProvider.GetRequiredService<IStatisticsRecomputeService>();
-        var unitOfWork = scope.ServiceProvider.GetRequiredService<IStatisticsUnitOfWork>();
-        var clock = scope.ServiceProvider.GetRequiredService<IClock>();
-
-        var pending = await outbox.ListPendingAsync(BatchSize, ct);
         var processed = 0;
 
-        foreach (var message in pending)
+        // One message per transaction: the claim (FOR UPDATE SKIP LOCKED), the recompute, and the
+        // mark commit together, so a crash mid-recompute leaves the message pending and the
+        // statistics untouched, and two drainers never work the same message.
+        for (var i = 0; i < BatchSize; i++)
         {
+            using var scope = _scopeFactory.CreateScope();
+            var outbox = scope.ServiceProvider.GetRequiredService<IOutboxRepository>();
+            var recompute = scope.ServiceProvider.GetRequiredService<IStatisticsRecomputeService>();
+            var unitOfWork = scope.ServiceProvider.GetRequiredService<IStatisticsUnitOfWork>();
+            var clock = scope.ServiceProvider.GetRequiredService<IClock>();
+
+            await unitOfWork.BeginAsync(ct);
+            var message = await outbox.ClaimNextPendingAsync(ct);
+            if (message is null)
+            {
+                await unitOfWork.RollbackAsync(ct);
+                break;
+            }
+
             try
             {
                 var competitionId = ReadCompetitionId(message.Payload);
@@ -78,21 +88,32 @@ public sealed class OutboxDrainer : BackgroundService
                     if (result.IsFailure)
                     {
                         message.MarkFailed(result.Error.Code);
+                        await unitOfWork.SaveChangesAsync(ct);
+                        await unitOfWork.CommitAsync(ct);
                         continue;
                     }
                 }
 
                 message.MarkProcessed(clock.UtcNow);
+                await unitOfWork.SaveChangesAsync(ct);
+                await unitOfWork.CommitAsync(ct);
                 processed++;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to process outbox message {MessageId}.", message.Id);
-                message.MarkFailed(ex.Message);
+                await unitOfWork.RollbackAsync(ct);
+
+                // Record the failure in its own transaction so the message is not retried forever.
+                using var failureScope = _scopeFactory.CreateScope();
+                var failedOutbox = failureScope.ServiceProvider.GetRequiredService<IOutboxRepository>();
+                var failedUnitOfWork = failureScope.ServiceProvider.GetRequiredService<IStatisticsUnitOfWork>();
+                var failed = await failedOutbox.GetAsync(message.Id, ct);
+                failed?.MarkFailed(ex.Message);
+                await failedUnitOfWork.SaveChangesAsync(ct);
             }
         }
 
-        await unitOfWork.SaveChangesAsync(ct);
         return processed;
     }
 

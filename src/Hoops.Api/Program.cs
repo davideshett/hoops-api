@@ -170,6 +170,19 @@ builder.Services.AddHoopsAuthorization();
 builder.Services.AddHoopsObservability(builder.Configuration, "hoops-api");
 builder.Services.AddHoopsRateLimiting(builder.Configuration);
 
+// Browser clients. Origins come from configuration (Cors:AllowedOrigins); Development additionally
+// allows the Vite dev server so the scorer app can run against a local API with no setup.
+builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
+{
+    var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+    if (builder.Environment.IsDevelopment())
+    {
+        origins = [.. origins, "http://localhost:5173", "http://127.0.0.1:5173"];
+    }
+
+    policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod().WithExposedHeaders("Retry-After");
+}));
+
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
@@ -230,6 +243,7 @@ if (app.Environment.IsDevelopment())
     });
 }
 
+app.UseCors();
 app.UseRateLimiter();
 
 app.UseAuthentication();

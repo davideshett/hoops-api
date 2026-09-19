@@ -151,6 +151,16 @@ public interface IOutboxRepository
 
     /// <summary>The oldest pending messages, up to <paramref name="limit"/>.</summary>
     Task<IReadOnlyList<OutboxMessage>> ListPendingAsync(int limit, CancellationToken ct = default);
+
+    /// <summary>
+    /// Locks and returns the oldest unprocessed message, or null. Must be called inside a transaction
+    /// (see <see cref="IStatisticsUnitOfWork.BeginRecomputeAsync"/>-style sections); another caller
+    /// holding a message skips it rather than waiting.
+    /// </summary>
+    Task<OutboxMessage?> ClaimNextPendingAsync(CancellationToken ct = default);
+
+    /// <summary>One message by id.</summary>
+    Task<OutboxMessage?> GetAsync(OutboxMessageId id, CancellationToken ct = default);
 }
 
 /// <summary>Commits staged changes for the statistics module.</summary>
@@ -158,6 +168,26 @@ public interface IStatisticsUnitOfWork
 {
     /// <summary>Persists all staged changes.</summary>
     Task<int> SaveChangesAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Opens ONE transaction for a whole competition recompute and takes a lock keyed on the
+    /// competition. A recompute deletes then rebuilds; without this a reader between the two sees
+    /// an empty competition, and two recomputes (the outbox drainer and an admin, say) interleave.
+    /// Every SaveChangesAsync until <see cref="CommitAsync"/> joins the transaction.
+    /// </summary>
+    Task BeginRecomputeAsync(CompetitionId competitionId, CancellationToken ct = default);
+
+    /// <summary>Opens a transaction with no lock, for a caller that will run several steps atomically (the outbox drainer).</summary>
+    Task BeginAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Commits the transaction this unit of work opened. Nested sections — a recompute inside the
+    /// drainer's transaction — are no-ops here; the outermost owner commits.
+    /// </summary>
+    Task CommitAsync(CancellationToken ct = default);
+
+    /// <summary>Rolls back the transaction this unit of work opened, if any.</summary>
+    Task RollbackAsync(CancellationToken ct = default);
 }
 
 /// <summary>One shot as stored in the event log, flattened for charting.</summary>

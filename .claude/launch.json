@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "scorer-web", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev", "--prefix", "clients/scorer-web"], "port": 5173 }
+  ]
+}

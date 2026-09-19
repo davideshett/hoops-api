@@ -70,6 +70,15 @@ public sealed class StatisticsRecomputeService : IStatisticsRecomputeService
             }
         }
 
+        // One transaction, one lock, for the whole delete-and-rebuild (see IStatisticsUnitOfWork).
+        await _unitOfWork.BeginRecomputeAsync(competitionId, ct);
+        var result = await RebuildCompetitionAsync(competitionId, ct);
+        await _unitOfWork.CommitAsync(ct);
+        return result;
+    }
+
+    private async Task<Result<RecomputeSummaryDto>> RebuildCompetitionAsync(CompetitionId competitionId, CancellationToken ct)
+    {
         var games = await _games.ListFinalizedForCompetitionAsync(competitionId, ct);
 
         // 0. Clear the whole competition first. Rebuilding only the games that are CURRENTLY finalised

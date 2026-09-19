@@ -114,6 +114,31 @@ public sealed class StatisticsTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task Concurrent_recomputes_never_expose_an_empty_competition_to_a_reader()
+    {
+        // A recompute deletes then rebuilds. Before it ran in one locked transaction, a reader —
+        // or a second recompute, such as the outbox drainer overlapping an admin's — could land in
+        // the gap and see (or produce) an empty competition. Hammer it and read throughout.
+        var g = await FinalizedGameAsync();
+        var url = $"/api/v1/organisations/{g.OrgId}/admin/recompute/competitions/{g.CompetitionId}";
+        var standingsUrl = $"/api/v1/organisations/{g.OrgId}/competitions/{g.CompetitionId}/standings";
+
+        var recomputes = Enumerable.Range(0, 6).Select(_ => g.Client.PostAsync(url, null));
+        var reads = Enumerable.Range(0, 12).Select(async i =>
+        {
+            await Task.Delay(i * 25);
+            var body = await (await g.Client.GetAsync(standingsUrl)).Content.ReadAsStringAsync();
+            return JsonDocument.Parse(body).RootElement.GetArrayLength();
+        });
+
+        var results = await Task.WhenAll(recomputes);
+        var rowCounts = await Task.WhenAll(reads);
+
+        results.Should().OnlyContain(r => r.StatusCode == HttpStatusCode.OK);
+        rowCounts.Should().OnlyContain(n => n == 2, "standings must show both teams at every instant, never a half-rebuilt table");
+    }
+
+    [Fact]
     public async Task Qualification_is_recomputed_across_the_whole_competition()
     {
         var g = await FinalizedGameAsync();

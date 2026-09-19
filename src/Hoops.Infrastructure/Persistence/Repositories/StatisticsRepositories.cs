@@ -128,4 +128,19 @@ public sealed class OutboxRepository(AppDbContext db) : IOutboxRepository
     public async Task<IReadOnlyList<OutboxMessage>> ListPendingAsync(int limit, CancellationToken ct = default)
         => await db.OutboxMessages.Where(m => m.ProcessedAt == null)
             .OrderBy(m => m.OccurredAt).Take(limit).ToListAsync(ct);
+
+    /// <inheritdoc />
+    public Task<OutboxMessage?> GetAsync(OutboxMessageId id, CancellationToken ct = default)
+        => db.OutboxMessages.FirstOrDefaultAsync(m => m.Id == id, ct);
+
+    /// <inheritdoc />
+    public async Task<OutboxMessage?> ClaimNextPendingAsync(CancellationToken ct = default)
+    {
+        // FOR UPDATE SKIP LOCKED: two drainers (the background loop and a test's explicit drain, or
+        // two API instances) never pick up the same message. The row lock lives for the transaction
+        // the caller opened, and the same transaction carries the recompute and the mark.
+        return await db.OutboxMessages
+            .FromSqlRaw("SELECT * FROM outbox_messages WHERE processed_at IS NULL ORDER BY occurred_at LIMIT 1 FOR UPDATE SKIP LOCKED")
+            .FirstOrDefaultAsync(ct);
+    }
 }

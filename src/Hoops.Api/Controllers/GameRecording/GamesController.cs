@@ -124,7 +124,8 @@ public sealed class GamesController : ApiControllerBase
     /// <response code="400">Roster too small, or wrong starter count.</response>
     /// <response code="404">The game does not exist.</response>
     /// <response code="409">The game's roster cannot be locked from its current state.</response>
-    [Authorize(Policy = AuthPolicies.OrgManager)]
+    // Game-day, not scheduling: the statistician at the table locks from the coaches' team sheets.
+    [Authorize(Policy = AuthPolicies.OrgStatistician)]
     [HttpPost("{gameId:guid}/lock-roster")]
     [ProducesResponseType(typeof(GameDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]

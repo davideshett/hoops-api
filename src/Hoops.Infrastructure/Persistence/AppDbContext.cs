@@ -235,8 +235,55 @@ public sealed class AppDbContext : DbContext, IUnitOfWork, CompetitionsUnitOfWor
             _ledgerTransaction = await Database.BeginTransactionAsync(ct);
         }
 
-        await Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(7264001)", ct);
+        await AcquireAdvisoryLockAsync(LedgerLockKey, ct);
     }
+
+    private const long LedgerLockKey = 7264001;
+    private Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? _ownedTransaction;
+
+    /// <inheritdoc />
+    public async Task BeginAsync(CancellationToken ct = default)
+    {
+        if (Database.CurrentTransaction is null)
+        {
+            _ownedTransaction = await Database.BeginTransactionAsync(ct);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task BeginRecomputeAsync(CompetitionId competitionId, CancellationToken ct = default)
+    {
+        await BeginAsync(ct);
+
+        // Keyed on the competition, so recomputes of DIFFERENT competitions still run in parallel.
+        await AcquireAdvisoryLockAsync(BitConverter.ToInt64(competitionId.Value.ToByteArray(), 0), ct);
+    }
+
+    /// <inheritdoc />
+    public async Task CommitAsync(CancellationToken ct = default)
+    {
+        if (_ownedTransaction is { } transaction)
+        {
+            _ownedTransaction = null;
+            await transaction.CommitAsync(ct);
+            await transaction.DisposeAsync();
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task RollbackAsync(CancellationToken ct = default)
+    {
+        if (_ownedTransaction is { } transaction)
+        {
+            _ownedTransaction = null;
+            await transaction.RollbackAsync(ct);
+            await transaction.DisposeAsync();
+        }
+    }
+
+    /// <summary>A transaction-scoped Postgres advisory lock: released automatically at commit or rollback.</summary>
+    private Task AcquireAdvisoryLockAsync(long key, CancellationToken ct)
+        => Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock({0})", [key], ct);
 
     private void SetTenantFilter<TEntity>(ModelBuilder builder)
         where TEntity : class, ITenantScoped
