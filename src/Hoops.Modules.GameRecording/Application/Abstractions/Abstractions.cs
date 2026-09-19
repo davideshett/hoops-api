@@ -91,6 +91,22 @@ public interface IRosterSnapshotSource
     Task<IReadOnlyList<RosterSnapshotRow>> ListActiveForTeamAsync(CompetitionTeamId competitionTeamId, CancellationToken ct = default);
 }
 
+/// <summary>A team's display labels.</summary>
+public sealed record TeamLabel(string Name, string ShortName, string? Abbreviation);
+
+/// <summary>
+/// Display labels for the game surface. A scorer's-table app labels its buttons with a name and a
+/// jersey number; without this it would need one registry call per player to do so.
+/// </summary>
+public interface IGameLabelSource
+{
+    /// <summary>Display names for the given players. "First Last", or "First Middle Last" when a middle name is held.</summary>
+    Task<IReadOnlyDictionary<PlayerId, string>> GetPlayerNamesAsync(IReadOnlyCollection<PlayerId> playerIds, CancellationToken ct = default);
+
+    /// <summary>Labels for the given competition teams, resolved through the underlying team.</summary>
+    Task<IReadOnlyDictionary<CompetitionTeamId, TeamLabel>> GetTeamLabelsAsync(IReadOnlyCollection<CompetitionTeamId> teamIds, CancellationToken ct = default);
+}
+
 /// <summary>Reads competition data (rules, entered teams, membership) for the game module.</summary>
 public interface IGameCompetitionSource
 {

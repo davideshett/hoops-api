@@ -139,3 +139,39 @@ public sealed class GameCompetitionSource(AppDbContext db) : IGameCompetitionSou
     public Task<bool> IsTeamInCompetitionAsync(CompetitionTeamId competitionTeamId, CompetitionId competitionId, CancellationToken ct = default)
         => db.CompetitionTeams.AnyAsync(t => t.Id == competitionTeamId && t.CompetitionId == competitionId, ct);
 }
+
+/// <summary>Display labels for the game surface, read across the Registry and Competitions tables.</summary>
+public sealed class GameLabelSource(AppDbContext db) : IGameLabelSource
+{
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<PlayerId, string>> GetPlayerNamesAsync(
+        IReadOnlyCollection<PlayerId> playerIds, CancellationToken ct = default)
+    {
+        // Players are platform-level (ADR-003), so there is no tenant filter to honour here; the
+        // caller has already been authorised for the game these players are on.
+        var rows = await db.Players
+            .Where(p => playerIds.Contains(p.Id))
+            .Select(p => new { p.Id, p.FirstName, p.MiddleName, p.LastName })
+            .ToListAsync(ct);
+
+        return rows.ToDictionary(
+            r => r.Id,
+            r => string.IsNullOrWhiteSpace(r.MiddleName) ? $"{r.FirstName} {r.LastName}" : $"{r.FirstName} {r.MiddleName} {r.LastName}");
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<CompetitionTeamId, TeamLabel>> GetTeamLabelsAsync(
+        IReadOnlyCollection<CompetitionTeamId> teamIds, CancellationToken ct = default)
+    {
+        // Tenant-filtered: a competition team is ordinary organisation data.
+        var rows = await db.CompetitionTeams
+            .Where(ct2 => teamIds.Contains(ct2.Id))
+            .Join(db.Teams, ct2 => ct2.TeamId, t => t.Id, (ct2, t) => new { ct2.Id, ct2.DisplayName, t.Name, t.ShortName, t.Abbreviation })
+            .ToListAsync(ct);
+
+        // A competition may enter a team under a display name ("Awka Warriors B"); prefer it.
+        return rows.ToDictionary(
+            r => r.Id,
+            r => new TeamLabel(string.IsNullOrWhiteSpace(r.DisplayName) ? r.Name : r.DisplayName, r.ShortName, r.Abbreviation));
+    }
+}

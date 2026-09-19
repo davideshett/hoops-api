@@ -44,6 +44,6 @@ internal static class Mappers
     public static GameOfficialDto ToDto(this GameOfficial o)
         => new(o.Id, o.GameId, o.FullName, o.Role.ToString());
 
-    public static GameRosterEntryDto ToDto(this GameRosterEntry e)
-        => new(e.Id, e.CompetitionTeamId, e.PlayerId, e.JerseyNumber, e.Position, e.IsStarter, e.IsCaptain);
+    public static GameRosterEntryDto ToDto(this GameRosterEntry e, string fullName)
+        => new(e.Id, e.CompetitionTeamId, e.PlayerId, fullName, e.JerseyNumber, e.Position, e.IsStarter, e.IsCaptain);
 }

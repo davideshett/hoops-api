@@ -47,17 +47,20 @@ public sealed record GameRosterSelection(RosterEntryId RosterEntryId, bool IsSta
 /// <summary>Lock the roster: the set of players (by roster-entry id) available for this game, and who starts.</summary>
 public sealed record LockRosterRequest(IReadOnlyList<GameRosterSelection> Selections);
 
-/// <summary>A frozen game-roster snapshot row.</summary>
+/// <summary>A frozen game-roster snapshot row, with the player's display name for the scorer's table.</summary>
 public sealed record GameRosterEntryDto(
-    GameRosterEntryId Id, CompetitionTeamId CompetitionTeamId, PlayerId PlayerId,
+    GameRosterEntryId Id, CompetitionTeamId CompetitionTeamId, PlayerId PlayerId, string FullName,
     string JerseyNumber, string? Position, bool IsStarter, bool IsCaptain);
 
 /// <summary>One player currently on a team's roster, offered on the game-setup screen.</summary>
 public sealed record AvailablePlayerDto(
-    RosterEntryId RosterEntryId, PlayerId PlayerId, string JerseyNumber, string? Position, bool IsCaptain, int VerifiedTier);
+    RosterEntryId RosterEntryId, PlayerId PlayerId, string FullName, string JerseyNumber, string? Position,
+    bool IsCaptain, int VerifiedTier);
 
-/// <summary>A team's current roster for a game's setup.</summary>
-public sealed record TeamRosterDto(CompetitionTeamId CompetitionTeamId, IReadOnlyList<AvailablePlayerDto> Players);
+/// <summary>A team's current roster for a game's setup, with the labels the app shows.</summary>
+public sealed record TeamRosterDto(
+    CompetitionTeamId CompetitionTeamId, string Name, string ShortName, string? Abbreviation,
+    IReadOnlyList<AvailablePlayerDto> Players);
 
 /// <summary>The game-setup screen: the fixture, its rule set, and both teams' current rosters.</summary>
 public sealed record GameSetupDto(GameDto Game, RuleSet RuleSet, IReadOnlyList<TeamRosterDto> Teams);

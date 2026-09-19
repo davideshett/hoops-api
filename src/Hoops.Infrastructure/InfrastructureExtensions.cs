@@ -77,6 +77,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IGameEventRepository, GameEventRepository>();
         services.AddScoped<IGameOfficialRepository, GameOfficialRepository>();
         services.AddScoped<IRosterSnapshotSource, RosterSnapshotSource>();
+        services.AddScoped<IGameLabelSource, GameLabelSource>();
         services.AddScoped<IGameCompetitionSource, GameCompetitionSource>();
 
         // Statistics module persistence.

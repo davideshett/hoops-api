@@ -62,6 +62,27 @@ public sealed class RosterLockSnapshotTests : IntegrationTestBase
     }
 
     [Fact]
+    public async Task The_setup_screen_and_the_locked_roster_carry_names_so_the_app_can_label_its_buttons()
+    {
+        // A scorer's-table app shows "P0 Team0  #1", not a player id. Both surfaces it reads must
+        // carry the name and the team label, or it is left making one registry call per player.
+        var ctx = await SetUpLockedGameAsync();
+
+        var setup = await ReadJson(await ctx.Client.GetAsync($"/api/v1/organisations/{ctx.OrgId}/games/{ctx.GameId}/setup"));
+        var teams = setup.GetProperty("teams").EnumerateArray().ToList();
+        teams.Should().HaveCount(2);
+        teams.Select(t => t.GetProperty("name").GetString()).Should().BeEquivalentTo(["Team 0", "Team 1"]);
+        teams.Select(t => t.GetProperty("shortName").GetString()).Should().BeEquivalentTo(["T0", "T1"]);
+        teams[0].GetProperty("players").EnumerateArray()
+            .Select(p => p.GetProperty("fullName").GetString())
+            .Should().OnlyContain(n => n!.StartsWith("P") && n.Contains(" Team"));
+
+        var roster = await GetGameRosterAsync(ctx);
+        roster.EnumerateArray().Select(e => e.GetProperty("fullName").GetString())
+            .Should().OnlyContain(n => !string.IsNullOrWhiteSpace(n) && n != "Unknown player");
+    }
+
+    [Fact]
     public async Task Roster_lock_fails_when_a_team_has_fewer_than_min_roster_size()
     {
         var ctx = await SetUpGameWithRostersAsync(playersPerTeam: 4); // below the FIBA minimum of 5

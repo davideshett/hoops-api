@@ -15,19 +15,22 @@ public sealed class GameService : IGameService
     private readonly IGameOfficialRepository _officials;
     private readonly IRosterSnapshotSource _rosters;
     private readonly IGameCompetitionSource _competitions;
+    private readonly IGameLabelSource _labels;
     private readonly IGameRecordingUnitOfWork _unitOfWork;
     private readonly IClock _clock;
 
     /// <summary>Creates the service.</summary>
     public GameService(
         IGameRepository games, IGameRosterRepository gameRosters, IGameOfficialRepository officials,
-        IRosterSnapshotSource rosters, IGameCompetitionSource competitions, IGameRecordingUnitOfWork unitOfWork, IClock clock)
+        IRosterSnapshotSource rosters, IGameCompetitionSource competitions, IGameLabelSource labels,
+        IGameRecordingUnitOfWork unitOfWork, IClock clock)
     {
         _games = games;
         _gameRosters = gameRosters;
         _officials = officials;
         _rosters = rosters;
         _competitions = competitions;
+        _labels = labels;
         _unitOfWork = unitOfWork;
         _clock = clock;
     }
@@ -202,13 +205,25 @@ public sealed class GameService : IGameService
             return CompetitionNotFound();
         }
 
-        var teams = new List<TeamRosterDto>();
-        foreach (var teamId in new[] { game.HomeCompetitionTeamId, game.AwayCompetitionTeamId })
+        var teamIds = new[] { game.HomeCompetitionTeamId, game.AwayCompetitionTeamId };
+        var rosters = new Dictionary<CompetitionTeamId, IReadOnlyList<RosterSnapshotRow>>();
+        foreach (var teamId in teamIds)
         {
-            var players = await _rosters.ListActiveForTeamAsync(teamId, ct);
-            teams.Add(new TeamRosterDto(teamId, players.Select(p =>
-                new AvailablePlayerDto(p.RosterEntryId, p.PlayerId, p.JerseyNumber, p.Position, p.IsCaptain, p.VerifiedTier)).ToList()));
+            rosters[teamId] = await _rosters.ListActiveForTeamAsync(teamId, ct);
         }
+
+        // Two lookups for the whole screen, so the app is not left making one call per player.
+        var names = await _labels.GetPlayerNamesAsync(rosters.Values.SelectMany(r => r).Select(r => r.PlayerId).ToList(), ct);
+        var labels = await _labels.GetTeamLabelsAsync(teamIds, ct);
+
+        var teams = teamIds.Select(teamId =>
+        {
+            var label = labels.GetValueOrDefault(teamId) ?? new TeamLabel("Unknown team", "?", null);
+            return new TeamRosterDto(teamId, label.Name, label.ShortName, label.Abbreviation, rosters[teamId].Select(p =>
+                new AvailablePlayerDto(
+                    p.RosterEntryId, p.PlayerId, names.GetValueOrDefault(p.PlayerId, "Unknown player"),
+                    p.JerseyNumber, p.Position, p.IsCaptain, p.VerifiedTier)).ToList());
+        }).ToList();
 
         return new GameSetupDto(game.ToDto(), ruleSet, teams);
     }
@@ -289,7 +304,9 @@ public sealed class GameService : IGameService
     public async Task<Result<IReadOnlyList<GameRosterEntryDto>>> GetGameRosterAsync(GameId id, CancellationToken ct = default)
     {
         var entries = await _gameRosters.ListForGameAsync(id, ct);
-        return Result.Success<IReadOnlyList<GameRosterEntryDto>>(entries.Select(e => e.ToDto()).ToList());
+        var names = await _labels.GetPlayerNamesAsync(entries.Select(e => e.PlayerId).Distinct().ToList(), ct);
+        return Result.Success<IReadOnlyList<GameRosterEntryDto>>(
+            entries.Select(e => e.ToDto(names.GetValueOrDefault(e.PlayerId, "Unknown player"))).ToList());
     }
 
     private async Task<Result<GameDto>> TransitionAsync(GameId id, Func<Game, bool> transition, string code, string message, CancellationToken ct)
